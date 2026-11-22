@@ -25,6 +25,8 @@
 <config>/custom_components/tcl_tv/manifest.json
 ```
 
+集成图标来自 TCLPlus 应用的 `@mipmap/ic_app`，放在 `custom_components/tcl_tv/brand/`（Home Assistant 2026.3+ 会自动使用）。
+
 重启 Home Assistant。设置 → 设备与服务 → 添加集成 → **TCL TV** → 填写电视 IP。
 
 HACS 自定义仓库也可指向本仓库（类别选 Integration）。
