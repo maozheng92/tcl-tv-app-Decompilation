@@ -1,0 +1,12 @@
+{
+  "domain": "tcl_tv",
+  "name": "TCL TV",
+  "version": "0.1.0",
+  "codeowners": ["@maozheng92"],
+  "config_flow": true,
+  "documentation": "https://github.com/maozheng92/tcl-tv-app-Decompilation",
+  "issue_tracker": "https://github.com/maozheng92/tcl-tv-app-Decompilation/issues",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": []
+}

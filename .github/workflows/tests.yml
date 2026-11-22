@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+    paths-ignore:
+      - "*.apk"
+  pull_request:
+    paths-ignore:
+      - "*.apk"
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run protocol tests
+        run: python -m pytest tests -v
