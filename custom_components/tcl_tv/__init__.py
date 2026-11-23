@@ -13,7 +13,7 @@ __all__ = ["DOMAIN", "TclTvConfigEntry", "async_setup_entry", "async_unload_entr
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TclTvConfigEntry) -> bool:
-    hub = TclTvHub(entry)
+    hub = TclTvHub(hass, entry)
     entry.runtime_data = hub
     # A powered-off TV is a normal state, not a setup failure: entities report
     # "off" until the session comes up.

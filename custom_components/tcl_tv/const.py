@@ -11,6 +11,9 @@ CONF_ACTIVE_MAC = "active_mac"
 CONF_MODEL = "model"
 CONF_SOFTWARE_VERSION = "software_version"
 
+# Optional HA button entity pressed when media_player.turn_on / remote.turn_on.
+CONF_POWER_ON_BUTTON = "power_on_button"
+
 # Name the TV shows for this controller (159 handshake field 1).
 CLIENT_NAME = "HomeAssistant"
 
