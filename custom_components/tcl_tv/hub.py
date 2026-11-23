@@ -5,15 +5,18 @@ import asyncio
 from collections.abc import Callable
 import logging
 
+from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
-from homeassistant.core import CALLBACK_TYPE, callback
+from homeassistant.const import CONF_HOST, CONF_ENTITY_ID
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     CLIENT_NAME,
     CONF_ACTIVE_MAC,
     CONF_CLIENT_ID,
     CONF_MAC,
+    CONF_POWER_ON_BUTTON,
     RECONNECT_INTERVAL,
     VOLUME_POLL_INTERVAL,
 )
@@ -25,7 +28,9 @@ _LOGGER = logging.getLogger(__name__)
 class TclTvHub:
     """Connection supervisor; "connected" is the only power signal the TV offers."""
 
-    def __init__(self, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.hass = hass
+        self.entry = entry
         self.host: str = entry.data[CONF_HOST]
         self._client_id: str = entry.data[CONF_CLIENT_ID]
         self._wake_macs = list(
@@ -48,6 +53,11 @@ class TclTvHub:
     @property
     def connected(self) -> bool:
         return self.client is not None and self.client.connected
+
+    @property
+    def power_on_button(self) -> str | None:
+        button = self.entry.options.get(CONF_POWER_ON_BUTTON)
+        return button if isinstance(button, str) and button else None
 
     @callback
     def async_add_listener(self, update: CALLBACK_TYPE) -> Callable[[], None]:
@@ -149,7 +159,24 @@ class TclTvHub:
     async def async_turn_on(self) -> None:
         if self.connected:
             return
-        await async_wake(self._wake_macs)
+        button = self.power_on_button
+        if button:
+            if self.hass.states.get(button) is None:
+                raise HomeAssistantError(
+                    f"Power-on button {button} is missing; pick another in TCL TV options"
+                )
+            await self.hass.services.async_call(
+                BUTTON_DOMAIN,
+                "press",
+                {CONF_ENTITY_ID: button},
+                blocking=True,
+            )
+        elif self._wake_macs:
+            await async_wake(self._wake_macs)
+        else:
+            raise HomeAssistantError(
+                "No power-on button configured and no MAC for Wake-on-LAN"
+            )
         self._retry_now.set()
 
     async def async_turn_off(self) -> None:

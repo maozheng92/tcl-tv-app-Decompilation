@@ -15,5 +15,19 @@
     "abort": {
       "already_configured": "This TV is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TCL TV options",
+        "description": "Optional button pressed when turning the TV on (instead of Wake-on-LAN). Leave empty to keep using WOL.",
+        "data": {
+          "power_on_button": "Power-on button"
+        },
+        "data_description": {
+          "power_on_button": "Any Home Assistant button entity, for example an IR blaster, smart plug helper, or script exposed as a button."
+        }
+      }
+    }
   }
 }

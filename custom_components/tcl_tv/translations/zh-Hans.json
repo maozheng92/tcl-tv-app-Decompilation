@@ -15,5 +15,19 @@
     "abort": {
       "already_configured": "这台电视已经添加过了。"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TCL 电视选项",
+        "description": "开机时要按下的可选按钮（代替 Wake-on-LAN）。留空则继续使用 WOL。",
+        "data": {
+          "power_on_button": "开机按钮"
+        },
+        "data_description": {
+          "power_on_button": "任意 Home Assistant 的 button 实体，例如红外发射器、智能插座辅助按钮，或以按钮形式暴露的脚本。"
+        }
+      }
+    }
   }
 }
