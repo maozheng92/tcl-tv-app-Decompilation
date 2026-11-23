@@ -19,23 +19,32 @@
   "options": {
     "step": {
       "init": {
-        "title": "TCL TV options",
-        "description": "Optional infrared remote used to turn the TV on (instead of Wake-on-LAN). Leave remote and command empty to keep using WOL.",
+        "title": "IR power-on remote",
+        "description": "Pick an infrared remote (Broadlink, Harmony Hub, or Xiaomi Home). Leave empty to keep using Wake-on-LAN.",
         "data": {
-          "power_on_remote": "IR remote",
-          "power_on_command": "Power-on command",
-          "power_on_device": "Device (optional)"
+          "power_on_remote": "IR remote"
         },
         "data_description": {
-          "power_on_remote": "A Home Assistant remote entity from an IR blaster (Broadlink, Xiaomi, ESPHome, etc.).",
-          "power_on_command": "Command name learned on that remote, for example Power or power_on.",
-          "power_on_device": "Optional device id required by some remotes (e.g. Broadlink learned device name)."
+          "power_on_remote": "A Home Assistant remote entity that has learned IR codes."
+        }
+      },
+      "ir_details": {
+        "title": "Power-on IR command",
+        "description": "Choose the learned device and command for {remote_entity} (codes file: {codes_file}).",
+        "data": {
+          "power_on_device": "Device",
+          "power_on_command": "Command"
+        },
+        "data_description": {
+          "power_on_device": "Device name from the remote's learned codes. Required for Harmony Hub and Xiaomi Home.",
+          "power_on_command": "Command name from that device (for example Power or power_on)."
         }
       }
     },
     "error": {
-      "command_required": "Enter the IR command name when an IR remote is selected.",
-      "remote_required": "Select an IR remote when a command name is entered."
+      "command_required": "Select or enter the IR command name.",
+      "device_required": "This remote requires a device name.",
+      "remote_required": "Select an IR remote."
     }
   }
 }
