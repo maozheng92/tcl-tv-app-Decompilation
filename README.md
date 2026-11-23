@@ -11,7 +11,7 @@
 | `media_player.<电视>` | 开/关（开=可选红外遥控或 WOL，关=电源切换键）、音量读/写/加减、静音、播放/暂停键、用 `select_source` **启动已安装应用** |
 | `remote.<电视>` | `remote.send_command` 发送方向键、OK、返回、主页、菜单、数字、信号源等 |
 
-开机键：在集成条目的 **配置 / Configure** 里可选一个红外 `remote.*` 实体，并填写开机指令名（部分发射器还需设备名）。设置后，`turn_on` 会调用 `remote.send_command`；都留空则仍发 Wake-on-LAN。
+开机键：在集成条目的 **配置 / Configure** 里选择红外 `remote.*`（Broadlink / Harmony Hub / 小米万能遥控），再从该遥控已学习的码库中**下拉选择**设备与开机指令（实现参考 [ir_television](https://github.com/maozheng92/ir_television)）。设置后，`turn_on` 会调用 `remote.send_command`；遥控留空则仍发 Wake-on-LAN。
 
 **离线只表示控制链路不可达，不证明关机。** 电源键是切换。集成不知道当前前台应用、播放内容和精确亮屏状态。`select_source` 列出的是已安装应用，不是 HDMI 输入名。
 

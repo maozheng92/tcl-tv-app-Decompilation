@@ -19,23 +19,32 @@
   "options": {
     "step": {
       "init": {
-        "title": "TCL 电视选项",
-        "description": "开机时可选使用红外遥控（代替 Wake-on-LAN）。红外遥控与指令都留空则继续使用 WOL。",
+        "title": "红外开机遥控",
+        "description": "选择红外遥控器（Broadlink、Harmony Hub 或小米万能遥控）。留空则继续使用 Wake-on-LAN。",
         "data": {
-          "power_on_remote": "红外遥控",
-          "power_on_command": "开机指令",
-          "power_on_device": "设备名（可选）"
+          "power_on_remote": "红外遥控"
         },
         "data_description": {
-          "power_on_remote": "红外发射器对应的 Home Assistant remote 实体（如 Broadlink、小米红外、ESPHome 等）。",
-          "power_on_command": "该遥控上已学习的指令名，例如 Power 或 power_on。",
-          "power_on_device": "部分红外集成需要的设备名（例如 Broadlink 学习时的设备名称）。"
+          "power_on_remote": "已学习红外码的 Home Assistant remote 实体。"
+        }
+      },
+      "ir_details": {
+        "title": "开机红外指令",
+        "description": "从 {remote_entity} 已学习的码库中选择设备与指令（码文件：{codes_file}）。",
+        "data": {
+          "power_on_device": "设备",
+          "power_on_command": "指令"
+        },
+        "data_description": {
+          "power_on_device": "红外码库中的设备名。Harmony Hub 与小米万能遥控必填。",
+          "power_on_command": "该设备下的指令名，例如 Power 或 power_on。"
         }
       }
     },
     "error": {
-      "command_required": "已选择红外遥控时必须填写开机指令名。",
-      "remote_required": "填写了指令名时必须选择红外遥控。"
+      "command_required": "请选择或填写红外指令名。",
+      "device_required": "此红外遥控需要填写设备名。",
+      "remote_required": "请选择红外遥控。"
     }
   }
 }
