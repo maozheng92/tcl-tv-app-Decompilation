@@ -37,7 +37,10 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
         | MediaPlayerEntityFeature.VOLUME_SET
         | MediaPlayerEntityFeature.VOLUME_STEP
         | MediaPlayerEntityFeature.VOLUME_MUTE
-        | MediaPlayerEntityFeature.PLAY_PAUSE
+        # PLAY_PAUSE was removed; HA expects PLAY and/or PAUSE. TCL only has a
+        # single playback toggle key (26), so both features send the same key.
+        | MediaPlayerEntityFeature.PLAY
+        | MediaPlayerEntityFeature.PAUSE
         | MediaPlayerEntityFeature.SELECT_SOURCE
     )
 
