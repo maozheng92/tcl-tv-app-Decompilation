@@ -20,14 +20,22 @@
     "step": {
       "init": {
         "title": "TCL 电视选项",
-        "description": "开机时要按下的可选按钮（代替 Wake-on-LAN）。留空则继续使用 WOL。",
+        "description": "开机时可选使用红外遥控（代替 Wake-on-LAN）。红外遥控与指令都留空则继续使用 WOL。",
         "data": {
-          "power_on_button": "开机按钮"
+          "power_on_remote": "红外遥控",
+          "power_on_command": "开机指令",
+          "power_on_device": "设备名（可选）"
         },
         "data_description": {
-          "power_on_button": "任意 Home Assistant 的 button 实体，例如红外发射器、智能插座辅助按钮，或以按钮形式暴露的脚本。"
+          "power_on_remote": "红外发射器对应的 Home Assistant remote 实体（如 Broadlink、小米红外、ESPHome 等）。",
+          "power_on_command": "该遥控上已学习的指令名，例如 Power 或 power_on。",
+          "power_on_device": "部分红外集成需要的设备名（例如 Broadlink 学习时的设备名称）。"
         }
       }
+    },
+    "error": {
+      "command_required": "已选择红外遥控时必须填写开机指令名。",
+      "remote_required": "填写了指令名时必须选择红外遥控。"
     }
   }
 }
