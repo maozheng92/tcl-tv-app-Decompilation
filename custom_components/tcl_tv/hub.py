@@ -5,7 +5,7 @@ import asyncio
 from collections.abc import Callable
 import logging
 
-from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
+from homeassistant.components.remote import DOMAIN as REMOTE_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_ENTITY_ID
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
@@ -16,7 +16,9 @@ from .const import (
     CONF_ACTIVE_MAC,
     CONF_CLIENT_ID,
     CONF_MAC,
-    CONF_POWER_ON_BUTTON,
+    CONF_POWER_ON_COMMAND,
+    CONF_POWER_ON_DEVICE,
+    CONF_POWER_ON_REMOTE,
     RECONNECT_INTERVAL,
     VOLUME_POLL_INTERVAL,
 )
@@ -55,9 +57,19 @@ class TclTvHub:
         return self.client is not None and self.client.connected
 
     @property
-    def power_on_button(self) -> str | None:
-        button = self.entry.options.get(CONF_POWER_ON_BUTTON)
-        return button if isinstance(button, str) and button else None
+    def power_on_remote(self) -> str | None:
+        remote = self.entry.options.get(CONF_POWER_ON_REMOTE)
+        return remote if isinstance(remote, str) and remote else None
+
+    @property
+    def power_on_command(self) -> str | None:
+        command = self.entry.options.get(CONF_POWER_ON_COMMAND)
+        return command if isinstance(command, str) and command else None
+
+    @property
+    def power_on_device(self) -> str | None:
+        device = self.entry.options.get(CONF_POWER_ON_DEVICE)
+        return device if isinstance(device, str) and device else None
 
     @callback
     def async_add_listener(self, update: CALLBACK_TYPE) -> Callable[[], None]:
@@ -159,23 +171,30 @@ class TclTvHub:
     async def async_turn_on(self) -> None:
         if self.connected:
             return
-        button = self.power_on_button
-        if button:
-            if self.hass.states.get(button) is None:
+        remote = self.power_on_remote
+        command = self.power_on_command
+        if remote and command:
+            if self.hass.states.get(remote) is None:
                 raise HomeAssistantError(
-                    f"Power-on button {button} is missing; pick another in TCL TV options"
+                    f"Power-on remote {remote} is missing; pick another in TCL TV options"
                 )
+            data: dict[str, object] = {
+                CONF_ENTITY_ID: remote,
+                "command": command,
+            }
+            if self.power_on_device:
+                data["device"] = self.power_on_device
             await self.hass.services.async_call(
-                BUTTON_DOMAIN,
-                "press",
-                {CONF_ENTITY_ID: button},
+                REMOTE_DOMAIN,
+                "send_command",
+                data,
                 blocking=True,
             )
         elif self._wake_macs:
             await async_wake(self._wake_macs)
         else:
             raise HomeAssistantError(
-                "No power-on button configured and no MAC for Wake-on-LAN"
+                "No IR power-on remote configured and no MAC for Wake-on-LAN"
             )
         self._retry_now.set()
 

@@ -20,14 +20,22 @@
     "step": {
       "init": {
         "title": "TCL TV options",
-        "description": "Optional button pressed when turning the TV on (instead of Wake-on-LAN). Leave empty to keep using WOL.",
+        "description": "Optional infrared remote used to turn the TV on (instead of Wake-on-LAN). Leave remote and command empty to keep using WOL.",
         "data": {
-          "power_on_button": "Power-on button"
+          "power_on_remote": "IR remote",
+          "power_on_command": "Power-on command",
+          "power_on_device": "Device (optional)"
         },
         "data_description": {
-          "power_on_button": "Any Home Assistant button entity, for example an IR blaster, smart plug helper, or script exposed as a button."
+          "power_on_remote": "A Home Assistant remote entity from an IR blaster (Broadlink, Xiaomi, ESPHome, etc.).",
+          "power_on_command": "Command name learned on that remote, for example Power or power_on.",
+          "power_on_device": "Optional device id required by some remotes (e.g. Broadlink learned device name)."
         }
       }
+    },
+    "error": {
+      "command_required": "Enter the IR command name when an IR remote is selected.",
+      "remote_required": "Select an IR remote when a command name is entered."
     }
   }
 }

@@ -78,8 +78,11 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             attrs["tcl_apps"] = [
                 {"name": app.name, "package": app.package} for app in self.hub.apps
             ]
-        if self.hub.power_on_button:
-            attrs["power_on_button"] = self.hub.power_on_button
+        if self.hub.power_on_remote and self.hub.power_on_command:
+            attrs["power_on_remote"] = self.hub.power_on_remote
+            attrs["power_on_command"] = self.hub.power_on_command
+            if self.hub.power_on_device:
+                attrs["power_on_device"] = self.hub.power_on_device
         return attrs
 
     async def async_turn_on(self) -> None:
