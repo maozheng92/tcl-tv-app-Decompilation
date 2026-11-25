@@ -51,7 +51,7 @@
       },
       "sources": {
         "title": "Input sources",
-        "description": "Named HDMI/AV inputs with a button sequence (for example Source → Right → OK). Hidden sources stay in this list but not on the media player. Current: {source_names}",
+        "description": "Named HDMI/AV inputs with a press sequence (this TV's keys and/or button entities, for example Source → Right → OK). Hidden sources stay in this list but not on the media player. Current: {source_names}",
         "menu_options": {
           "source_add": "Add source",
           "source_edit": "Edit source",
@@ -62,17 +62,17 @@
       },
       "source_add": {
         "title": "Add input source",
-        "description": "Name the input and the button entities to press in order. Pause between presses so the TV menu can catch up.",
+        "description": "Name the input and the keys to press in order (this TV's remote keys and/or button entities). Pause between presses so the TV menu can catch up.",
         "data": {
           "name": "Name",
           "hidden": "Hide from source list",
-          "buttons": "Button sequence",
-          "interval": "Pause between buttons"
+          "buttons": "Press sequence",
+          "interval": "Pause between presses"
         },
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Press order, for example Source, Right, OK.",
+          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
           "interval": "Seconds to wait after each press except the last."
         }
       },
@@ -85,17 +85,17 @@
       },
       "source_form": {
         "title": "Edit input source",
-        "description": "Change the name, visibility, or button sequence.",
+        "description": "Change the name, visibility, or press sequence.",
         "data": {
           "name": "Name",
           "hidden": "Hide from source list",
-          "buttons": "Button sequence",
-          "interval": "Pause between buttons"
+          "buttons": "Press sequence",
+          "interval": "Pause between presses"
         },
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Press order, for example Source, Right, OK.",
+          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
           "interval": "Seconds to wait after each press except the last."
         }
       },
@@ -108,14 +108,15 @@
       },
       "source_reorder": {
         "title": "Reorder input sources",
-        "description": "Drag to change the order shown on the media player.",
+        "description": "All input sources are listed. Drag to change the order shown on the media player. Keep every source in the list.",
         "data": {
           "source_order": "Order"
         }
       }
     },
     "error": {
-      "buttons_required": "Select at least one button entity.",
+      "buttons_required": "Select at least one TV key or button entity.",
+      "unknown_action": "That press sequence has an unknown key or button.",
       "command_required": "Select or enter the IR command name.",
       "device_required": "This remote requires a device name.",
       "name_in_use": "That source name is already used.",

@@ -13,8 +13,6 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.selector import (
-    EntitySelector,
-    EntitySelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -37,6 +35,12 @@ from .ir_codes import (
     resolve_broadlink_codes_path,
     resolve_harmony_conf_path,
     resolve_xiaomi_codes_path,
+)
+from .protocol import KEYS
+from .sources import (
+    classify_source_action,
+    encode_source_actions,
+    source_key_tokens,
 )
 
 
@@ -227,33 +231,113 @@ def remote_dropdown(
     )
 
 
+_TCL_KEY_LABELS_EN = {
+    "up": "Up",
+    "down": "Down",
+    "left": "Left",
+    "right": "Right",
+    "ok": "OK",
+    "back": "Back",
+    "menu": "Menu",
+    "home": "Home",
+    "power": "Power",
+    "volume_up": "Volume up",
+    "volume_down": "Volume down",
+    "mute": "Mute",
+    "source": "Source",
+    "smart_tv": "Smart TV",
+}
+_TCL_KEY_LABELS_ZH = {
+    "up": "上",
+    "down": "下",
+    "left": "左",
+    "right": "右",
+    "ok": "确认",
+    "back": "返回",
+    "menu": "菜单",
+    "home": "主页",
+    "power": "电源",
+    "volume_up": "音量+",
+    "volume_down": "音量-",
+    "mute": "静音",
+    "source": "输入源",
+    "smart_tv": "智能电视",
+}
+
+
+def _tcl_key_label(hass: HomeAssistant, name: str) -> str:
+    lang = str(getattr(getattr(hass, "config", None), "language", "") or "")
+    labels = _TCL_KEY_LABELS_ZH if lang.casefold().startswith("zh") else _TCL_KEY_LABELS_EN
+    pretty = labels.get(name, name)
+    return f"TCL · {pretty} ({name})" if pretty != name else f"TCL · {name}"
+
+
+def _with_select_reorder(kwargs: dict[str, Any]) -> SelectSelector:
+    """Core SelectSelector schema omits ``reorder``; the frontend still honors it."""
+    try:
+        selector = SelectSelector({**kwargs, "reorder": True})
+    except (TypeError, ValueError, vol.Invalid):
+        selector = SelectSelector(kwargs)
+    config = getattr(selector, "config", None)
+    if isinstance(config, dict):
+        try:
+            config["reorder"] = True
+            config["multiple"] = True
+        except Exception:  # noqa: BLE001 — config may be immutable
+            pass
+    return selector
+
+
 def button_sequence_selector(
     hass: HomeAssistant, *, current: list[str] | None = None
-) -> EntitySelector:
-    """Multi-select of ``button.*`` entities (Source → Right → OK).
-
-    Use the entity picker, not a select list. ``SelectSelector`` has no
-    ``reorder`` key; passing it raises ``vol.Invalid`` and the companion
-    app shows a blank Error screen.
-    """
-    _ = (hass, current)
-    config: EntitySelectorConfig = {"domain": "button", "multiple": True}
-    try:
-        return EntitySelector({**config, "reorder": True})
-    except (TypeError, ValueError, vol.Invalid):
-        return EntitySelector(config)
+) -> SelectSelector:
+    """Ordered mix of this integration's T-Cast keys and ``button.*`` entities."""
+    options: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for name in KEYS:
+        label = _tcl_key_label(hass, name)
+        for token in source_key_tokens(name):
+            options.append({"value": token, "label": label})
+            seen.add(token)
+    current_tokens = encode_source_actions(list(current or []))
+    button_ids: list[str] = []
+    for token in [*(current or []), *current_tokens]:
+        classified = classify_source_action(token)
+        if classified and classified[0] == "button":
+            button_ids.append(classified[1])
+    entity_ids: list[str] = []
+    states = getattr(hass, "states", None)
+    if states is not None and hasattr(states, "async_entity_ids"):
+        entity_ids = list(states.async_entity_ids("button"))
+    for entity_id in dict.fromkeys([*button_ids, *entity_ids]):
+        if entity_id in seen:
+            continue
+        state = states.get(entity_id) if states is not None else None
+        options.append(
+            {"value": entity_id, "label": _state_label(state, entity_id)}
+        )
+        seen.add(entity_id)
+    if not options:
+        options = [{"value": "source", "label": _tcl_key_label(hass, "source")}]
+    return _with_select_reorder(
+        {
+            "options": options,
+            "multiple": True,
+            "custom_value": True,
+            "sort": False,
+        }
+    )
 
 
 def ordered_choice_selector(names: list[str]) -> SelectSelector:
-    """Multi-select of names. SelectSelector does not accept ``reorder``."""
-    return SelectSelector(
-        SelectSelectorConfig(
-            options=names,
-            multiple=True,
-            custom_value=False,
-            mode=SelectSelectorMode.DROPDOWN,
-            sort=False,
-        )
+    """List every source name so the user can drag to reorder."""
+    return _with_select_reorder(
+        {
+            "options": names,
+            "multiple": True,
+            "custom_value": False,
+            "sort": False,
+        }
     )
 
 

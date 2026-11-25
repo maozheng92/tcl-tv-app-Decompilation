@@ -26,6 +26,7 @@ from .const import (
     VOLUME_POLL_INTERVAL,
 )
 from .protocol import (
+    KEYS,
     MUTE_KEY,
     TclTvClient,
     TclTvError,
@@ -43,6 +44,7 @@ from .sources import (
     ATTR_BUTTONS,
     ATTR_INTERVAL,
     ATTR_NAME,
+    classify_source_action,
     copy_sources,
     find_source_index,
     visible_source_names,
@@ -235,26 +237,35 @@ class TclTvHub:
         self._retry_now.set()
 
     async def async_press_source_buttons(self, name: str) -> None:
-        """Press the configured button sequence for one named input source."""
+        """Run the configured T-Cast key / button sequence for one input source."""
         sources = self.sources
         index = find_source_index(sources, name)
         if index is None:
             raise HomeAssistantError(f"Unknown input source {name!r}")
         source = sources[index]
-        buttons = list(source[ATTR_BUTTONS])
+        actions = list(source[ATTR_BUTTONS])
         interval = float(source[ATTR_INTERVAL])
-        for step, entity_id in enumerate(buttons):
-            if self.hass.states.get(entity_id) is None:
+        for step, action in enumerate(actions):
+            classified = classify_source_action(action)
+            if classified is None:
                 raise HomeAssistantError(
-                    f"Source button {entity_id} is missing; edit the source in TCL TV options"
+                    f"Unknown source action {action!r}; edit the source in TCL TV options"
                 )
-            await self.hass.services.async_call(
-                BUTTON_DOMAIN,
-                "press",
-                {CONF_ENTITY_ID: entity_id},
-                blocking=True,
-            )
-            if step < len(buttons) - 1 and interval > 0:
+            kind, value = classified
+            if kind == "key":
+                await self.require_client().send_key(KEYS[value])
+            else:
+                if self.hass.states.get(value) is None:
+                    raise HomeAssistantError(
+                        f"Source button {value} is missing; edit the source in TCL TV options"
+                    )
+                await self.hass.services.async_call(
+                    BUTTON_DOMAIN,
+                    "press",
+                    {CONF_ENTITY_ID: value},
+                    blocking=True,
+                )
+            if step < len(actions) - 1 and interval > 0:
                 await asyncio.sleep(interval)
         self.selected_source = str(source[ATTR_NAME])
         self._notify()

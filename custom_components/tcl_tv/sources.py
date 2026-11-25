@@ -1,8 +1,8 @@
 """Manual HDMI / input-source records stored in config-entry options.
 
 T-Cast does not expose a stable HDMI inventory, so the user names each
-source and a sequence of ``button.*`` entities that switch to it (for
-example Source → Right → OK).
+source and a press sequence that switches to it (this integration's
+T-Cast keys and/or ``button.*`` entities, for example source → right → ok).
 """
 
 from __future__ import annotations
@@ -17,6 +17,31 @@ ATTR_INTERVAL = "interval"
 DEFAULT_INTERVAL = 0.4
 MAX_INTERVAL = 10.0
 
+# Select selectors cannot repeat the same value, so each T-Cast key is
+# offered as several unique tokens that all decode back to the key name.
+SOURCE_KEY_SLOT_MAX = 8
+_SOURCE_KEY_PREFIX = "key:"
+
+# Names only; keep in sync with protocol.KEYS (this file is tested offline).
+TCL_SOURCE_KEYS = frozenset(
+    {
+        "up",
+        "down",
+        "left",
+        "right",
+        "ok",
+        "back",
+        "menu",
+        "home",
+        "power",
+        "volume_up",
+        "volume_down",
+        "mute",
+        "source",
+        "smart_tv",
+    }
+)
+
 
 def normalize_name(name: Any) -> str:
     if not isinstance(name, str):
@@ -24,8 +49,7 @@ def normalize_name(name: Any) -> str:
     return " ".join(name.split())
 
 
-def parse_button_ids(raw: Any) -> list[str]:
-    """Preserve order; drop blanks and duplicates."""
+def _token_list(raw: Any) -> list[str]:
     if raw is None:
         items: list[Any] = []
     elif isinstance(raw, str):
@@ -35,16 +59,84 @@ def parse_button_ids(raw: Any) -> list[str]:
     else:
         items = [raw]
     out: list[str] = []
-    seen: set[str] = set()
     for item in items:
         if not isinstance(item, str):
             continue
-        entity_id = item.strip()
-        if not entity_id or entity_id in seen:
-            continue
-        seen.add(entity_id)
-        out.append(entity_id)
+        token = item.strip()
+        if token:
+            out.append(token)
     return out
+
+
+def parse_button_ids(raw: Any) -> list[str]:
+    """Preserve order; drop blanks and duplicates (source-name reorder lists)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for token in _token_list(raw):
+        if token in seen:
+            continue
+        seen.add(token)
+        out.append(token)
+    return out
+
+
+def classify_source_action(action: str) -> tuple[str, str] | None:
+    """Return ``('key', name)`` or ``('button', entity_id)``; else ``None``."""
+    token = action.strip() if isinstance(action, str) else ""
+    if not token:
+        return None
+    if token.startswith(_SOURCE_KEY_PREFIX):
+        name = token.split(":", 2)[1] if token.count(":") >= 1 else ""
+        if name in TCL_SOURCE_KEYS:
+            return ("key", name)
+        return None
+    if token in TCL_SOURCE_KEYS:
+        return ("key", token)
+    if token.startswith("button.") and token.count(".") == 1 and token.split(".", 1)[1]:
+        return ("button", token)
+    return None
+
+
+def parse_source_actions(raw: Any) -> list[str]:
+    """Press sequence: T-Cast key names and ``button.*`` ids. Repeats kept."""
+    out: list[str] = []
+    for token in _token_list(raw):
+        classified = classify_source_action(token)
+        if classified is None:
+            continue
+        out.append(classified[1])
+    return out
+
+
+def unknown_source_actions(raw: Any) -> list[str]:
+    return [token for token in _token_list(raw) if classify_source_action(token) is None]
+
+
+def encode_source_actions(actions: list[str]) -> list[str]:
+    """Unique form tokens so the same T-Cast key can appear more than once."""
+    counts: dict[str, int] = {}
+    out: list[str] = []
+    for action in actions:
+        classified = classify_source_action(action)
+        if classified is None:
+            continue
+        kind, value = classified
+        if kind != "key":
+            out.append(value)
+            continue
+        counts[value] = counts.get(value, 0) + 1
+        slot = counts[value]
+        if slot <= SOURCE_KEY_SLOT_MAX:
+            out.append(f"{_SOURCE_KEY_PREFIX}{value}:{slot}")
+        else:
+            out.append(value)
+    return out
+
+
+def source_key_tokens(name: str) -> list[str]:
+    if name not in TCL_SOURCE_KEYS:
+        return []
+    return [f"{_SOURCE_KEY_PREFIX}{name}:{slot}" for slot in range(1, SOURCE_KEY_SLOT_MAX + 1)]
 
 
 def parse_interval(raw: Any) -> float:
@@ -73,7 +165,7 @@ def copy_sources(raw: Any) -> list[dict[str, Any]]:
         name = normalize_name(item.get(ATTR_NAME))
         if not name or name.casefold() in seen:
             continue
-        buttons = parse_button_ids(item.get(ATTR_BUTTONS))
+        buttons = parse_source_actions(item.get(ATTR_BUTTONS))
         if not buttons:
             continue
         seen.add(name.casefold())
