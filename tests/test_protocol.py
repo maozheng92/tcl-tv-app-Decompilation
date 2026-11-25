@@ -118,6 +118,19 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert proto.KEYS["channel_down"] == 28
     assert proto.KEYS["playback"] == 26
     assert proto.KEYS["smart_tv"] == 45
+    assert proto.KEYS["red"] == 34
+    assert proto.KEYS["green"] == 35
+    assert proto.KEYS["yellow"] == 36
+    assert proto.KEYS["blue"] == 37
+    assert proto.KEYS["epg"] == 24
+    assert proto.KEYS["guide"] == 24
+    assert proto.resolve_key("红") == 34
+    assert proto.resolve_key("绿") == 35
+    assert proto.resolve_key("黄") == 36
+    assert proto.resolve_key("蓝") == 37
+    assert proto.resolve_key("live") is None
+    assert proto.resolve_key("直播") is None
+    assert "直播" in proto.LIVE_TV_NAMES
 
 
 async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
