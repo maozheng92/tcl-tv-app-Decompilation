@@ -92,7 +92,7 @@ TCLPlus 遥控代理发出的按键都是 `149>><code>`（`a.a.D`，常量 `NEED
 | C→T | `150>>` | `a.b.b` | 心跳 |
 | C→T | `136>>` | 电视端仍实现；**此版 APK 已删除 TCLRenderProxy** | 查音量，回复 `130>><n>` |
 | C→T | `130>><n>` | 同上 | 设置音量 0–100 |
-| C→T | `140>>` / `131>><true/false>` | 同上 | 静音读/写；失败则回退到按键 23 |
+| C→T | `140>>` / `131>><true/false>` | MagiConnect 渲染代理；**此版 TCLPlus 已删除，国行 `131>>false` 可能无效** | 仅作读回；静音/取消静音发按键 23 |
 | C→T | `223>>GET` | `AppManagerProxy.getAppData` / `a.a.C0099a`（ID 223） | 应用列表 |
 | C→T | `223>>OPEN>><package>` | `AppManagerProxy.openApp` | 启动应用 |
 | both | `159>>...` | `a.a.n` / `ProtocolHandlerV6` | 握手 |
@@ -122,9 +122,11 @@ TCLPlus **没有**可用的 HDMI 口清单：`TCLRemoteControlProxy` 虽有 Magi
 | `mouseLeftKeyAction` | 39 |
 | `mouseRightKeyAction` | 40 |
 
-`sendKeyAction(int)` 的形参是任意 `int`，线上仍是 `149>><整数>`。**国行固件只处理 TCL+ 实际发出的那一组**（上表 + 数字 1–9/0=10 + `source`=29）。MagiConnect `IpMessageConst` 里的 RED/GREEN/YELLOW/BLUE（34–37）、INFO（41）、SEARCH（33）、FAVORITE（32）、PICTURE（31）、SCALE（30）、DISPLAY（25）、PLAYBACK（26）、3D（17）、ENTER（68）、DOT（75）、BACKSPACE（38）在国行电视上无效果（实机确认）。APK 里没有另一套彩键/直播 `149` 映射；TCL+ UI 的 `"1"`–`"13"` 也只接到具名方法。**没有独立的 key-up 报文**；长按就是重复 `149`。
+`sendKeyAction(int)` 的形参是任意 `int`，线上仍是 `149>><整数>`。国行固件**不会**实现 APK 里出现过的全部整数：实机确认数字 0–9、`channel_up`/`channel_down`、`mouse_left`/`mouse_right`，以及 MagiConnect 彩键/info/search/playback/enter 等均无效果。本集成只把国行会响应的键写成具名命令；仍接受 0–999 的原始整数供试验。**没有独立的 key-up 报文**；长按就是重复 `149`。
 
-本集成 `remote.send_command` 只暴露上表 + 数字 + `source`。仍接受 0–999 的原始整数，方便试 Android `KEYCODE_*`（例如 183–186 为 `KEYCODE_PROG_*`），不把未验证的码写成具名键。
+### 静音
+
+TCLPlus `muteAction` 发 `149>>23`，是**切换**。MagiConnect `131>>true/false` 是 setter：国行上 `131>>true` 可能静音成功，`131>>false` 无效果，于是 `media_player` 只能静音不能取消。本集成静音/取消静音都走键 23：当前状态与目标不同时按一次。`140>>` 读回失败时用上次请求的状态判断是否还要再按。
 
 ### 直播
 
