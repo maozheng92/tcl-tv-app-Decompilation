@@ -16,8 +16,6 @@ ATTR_INTERVAL = "interval"
 ATTR_ACTIONS = "actions"
 ATTR_ADD_MORE = "add_more"
 ATTR_EDIT_SEQUENCE = "edit_sequence"
-ATTR_NEXT = "next"
-ATTR_GO_BACK = "go_back"
 
 KIND_KEY = "key"
 KIND_BUTTON = "button"
