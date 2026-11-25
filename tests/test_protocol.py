@@ -135,6 +135,29 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert "直播" in proto.LIVE_TV_NAMES
 
 
+def test_screenshot_reply_and_url_rewrite() -> None:
+    assert (
+        proto.parse_screenshot_reply(
+            "225>>0>>http://192.168.1.8:6554/NS_SCREENSHOT.png"
+        )
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    assert (
+        proto.rewrite_screenshot_url("http://:6554/NS_SCREENSHOT.png", "192.168.1.8")
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    assert (
+        proto.rewrite_screenshot_url(
+            "http://127.0.0.1:6554/NS_SCREENSHOT.png", "192.168.1.8"
+        )
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    with pytest.raises(proto.TclTvError):
+        proto.parse_screenshot_reply("225>>1")
+    with pytest.raises(proto.TclTvError, match="not supported"):
+        proto.parse_screenshot_reply("225>>2")
+
+
 async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     volume = 25
     apps = "223>>GET>>com.example.player::Player::icon"
@@ -160,6 +183,10 @@ async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -
             reply = proto.encode_frame("131>>false", encrypted=True)
         elif text.startswith("223>>GET"):
             reply = proto.encode_frame(apps, encrypted=True)
+        elif text.startswith("225"):
+            reply = proto.encode_frame(
+                "225>>0>>http://127.0.0.1:6554/NS_SCREENSHOT.png", encrypted=True
+            )
         elif text.startswith("150"):
             reply = proto.encode_frame("150>>YES", encrypted=True)
         else:
@@ -189,6 +216,9 @@ async def test_client_handshake_volume_and_apps() -> None:
         assert await client.get_mute() is False
         apps = await client.get_apps()
         assert apps[0].package == "com.example.player"
+        assert await client.request_screenshot() == (
+            "http://127.0.0.1:6554/NS_SCREENSHOT.png"
+        )
         await client.send_key(20)
     finally:
         await client.close()

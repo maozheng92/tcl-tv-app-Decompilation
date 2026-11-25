@@ -123,5 +123,12 @@
       "remote_required": "Select an IR remote.",
       "unknown_source": "That source is not in the list."
     }
+  },
+  "entity": {
+    "camera": {
+      "screenshot": {
+        "name": "Screenshot"
+      }
+    }
   }
 }

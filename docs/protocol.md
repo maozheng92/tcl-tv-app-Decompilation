@@ -95,6 +95,7 @@ TCLPlus 遥控代理发出的按键都是 `149>><code>`（`a.a.D`，常量 `NEED
 | C→T | `140>>` / `131>><true/false>` | MagiConnect 渲染代理；**此版 TCLPlus 已删除，国行 `131>>false` 可能无效** | 仅作读回；静音/取消静音发按键 23 |
 | C→T | `223>>GET` | `AppManagerProxy.getAppData` / `a.a.C0099a`（ID 223） | 应用列表 |
 | C→T | `223>>OPEN>><package>` | `AppManagerProxy.openApp` | 启动应用 |
+| C→T | `225>>` | `TCLShotPicProxy.shotPic` / `a.a.I` | 截图；回复 `225>><status>[>><url>]` |
 | both | `159>>...` | `a.a.n` / `ProtocolHandlerV6` | 握手 |
 
 应用列表记录：`package::name::icon[::versionCode::versionName::cache::data::code[::systemFlag]]`，应用之间用单个 `>` 分隔；`systemFlag=0` 为系统应用。本集成把应用放在媒体浏览器 / `play_media`（`app`），**不**放进 `source_list`。
@@ -127,6 +128,10 @@ TCLPlus **没有**可用的 HDMI 口清单：`TCLRemoteControlProxy` 虽有 Magi
 ### 静音
 
 TCLPlus `muteAction` 发 `149>>23`，是**切换**。MagiConnect `131>>true/false` 是 setter：国行上 `131>>true` 可能静音成功，`131>>false` 无效果，于是 `media_player` 只能静音不能取消。本集成静音/取消静音都走键 23：当前状态与目标不同时按一次。`140>>` 读回失败时用上次请求的状态判断是否还要再按。
+
+### 截图
+
+不是 `149` 按键。`TCLShotPicProxy.shotPic` 发 **`225>>`**（包 `a.a.I`）。回复 `225>><status>[>><url>]`：`0` 成功并带 HTTP 地址，`1` 失败，`2`/`4` 不支持，`3` 电视存储满。能力字符串第 7 个字符为 `0` 时 SDK 认为不支持（`function` 位 6）。URL 里主机可能为空（`http://:6554/NS_SCREENSHOT.png`），客户端用电视 IP 补上后再 GET。端口默认 **6554**。视频硬件层常常截不到（黑），字幕/时钟可以。
 
 ### 直播
 

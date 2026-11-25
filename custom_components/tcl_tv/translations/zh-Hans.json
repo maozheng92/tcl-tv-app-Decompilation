@@ -123,5 +123,12 @@
       "remote_required": "请选择红外遥控。",
       "unknown_source": "列表里没有这个输入源。"
     }
+  },
+  "entity": {
+    "camera": {
+      "screenshot": {
+        "name": "截图"
+      }
+    }
   }
 }
