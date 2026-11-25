@@ -45,4 +45,8 @@ async def async_setup_flow_ui(hass: HomeAssistant) -> None:
         )
     except RuntimeError:
         pass
-    add_extra_js_url(hass, f"{_URL_BASE}/{_JS_NAME}?v={_version()}")
+    url = f"{_URL_BASE}/{_JS_NAME}?v={_version()}"
+    # Module (default) plus classic script: Companion WebView is more reliable
+    # with extra_js_url_es5, and a window guard prevents double-install.
+    add_extra_js_url(hass, url)
+    add_extra_js_url(hass, url, es5=True)
