@@ -96,8 +96,7 @@
           "hidden": "Keep the source configured but omit it from the TV source list.",
           "interval": "Seconds to wait after each press except the last.",
           "edit_sequence": "Turn on to pick TV keys or button entities again and set how many times each is pressed."
-        },
-        "submit": "Save"
+        }
       },
       "source_seq_kind": {
         "title": "Press sequence type",
@@ -146,24 +145,21 @@
         },
         "data_description": {
           "add_more": "Turn on to append more TV keys or button entities after these."
-        },
-        "submit": "Save"
+        }
       },
       "source_delete": {
         "title": "Delete input source",
-        "description": "Remove a source from the list. Save writes the change immediately; this cannot be undone.",
+        "description": "Remove a source from the list. This cannot be undone after Save on the sources or options screen.",
         "data": {
           "name": "Source"
-        },
-        "submit": "Save"
+        }
       },
       "source_reorder": {
         "title": "Reorder input sources",
         "description": "All input sources are listed. Drag to change the order shown on the media player. Keep every source in the list.",
         "data": {
           "source_order": "Order"
-        },
-        "submit": "Save"
+        }
       }
     },
     "error": {
