@@ -51,7 +51,7 @@
       },
       "sources": {
         "title": "输入源",
-        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的按钮（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}",
+        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的本机按键和/或 button 实体（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}",
         "menu_options": {
           "source_add": "添加输入源",
           "source_edit": "修改输入源",
@@ -62,17 +62,17 @@
       },
       "source_add": {
         "title": "添加输入源",
-        "description": "填写名称，并按切换顺序选择 button 实体。按键之间留间隔，方便电视菜单跟上。",
+        "description": "填写名称，并按切换顺序选择本集成的遥控键和/或 button 实体。按键之间留间隔，方便电视菜单跟上。",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
-          "buttons": "按钮序列",
+          "buttons": "按键序列",
           "interval": "按键间隔"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，例如：输入源、右、确认。",
+          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
         }
       },
@@ -85,17 +85,17 @@
       },
       "source_form": {
         "title": "修改输入源",
-        "description": "修改名称、是否隐藏或按钮序列。",
+        "description": "修改名称、是否隐藏或按键序列。",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
-          "buttons": "按钮序列",
+          "buttons": "按键序列",
           "interval": "按键间隔"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，例如：输入源、右、确认。",
+          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
         }
       },
@@ -108,14 +108,15 @@
       },
       "source_reorder": {
         "title": "调整输入源顺序",
-        "description": "拖动以改变媒体播放器上显示的顺序。",
+        "description": "这里会列出全部输入源。拖动即可调整媒体播放器上的显示顺序。请保留列表中的每一项。",
         "data": {
           "source_order": "顺序"
         }
       }
     },
     "error": {
-      "buttons_required": "请至少选择一个 button 实体。",
+      "buttons_required": "请至少选择一个本机按键或 button 实体。",
+      "unknown_action": "按键序列里有无法识别的键或按钮。",
       "command_required": "请选择或填写红外指令名。",
       "device_required": "此红外遥控需要填写设备名。",
       "name_in_use": "这个输入源名称已经用过了。",

@@ -18,8 +18,8 @@ CONF_POWER_ON_REMOTE = "power_on_remote"
 CONF_POWER_ON_COMMAND = "power_on_command"
 CONF_POWER_ON_DEVICE = "power_on_device"
 
-# Manual input sources: [{name, hidden, buttons: [button.*…], interval}].
-# T-Cast has no HDMI inventory; each source is a button-press sequence.
+# Manual input sources: [{name, hidden, buttons: [key|button.*…], interval}].
+# T-Cast has no HDMI inventory; each source is a T-Cast key and/or button sequence.
 CONF_SOURCES = "sources"
 CONF_SOURCE_NAME = "name"
 CONF_SOURCE_ORDER = "source_order"

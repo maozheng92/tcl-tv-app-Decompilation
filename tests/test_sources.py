@@ -7,17 +7,19 @@ import sys
 import unittest
 from pathlib import Path
 
-_SOURCES = (
-    Path(__file__).resolve().parents[1]
-    / "custom_components"
-    / "tcl_tv"
-    / "sources.py"
-)
+_ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "tcl_tv"
+_SOURCES = _ROOT / "sources.py"
+_PROTOCOL = _ROOT / "protocol.py"
 _SPEC = importlib.util.spec_from_file_location("tcl_tv_sources", _SOURCES)
 assert _SPEC is not None and _SPEC.loader is not None
 sources = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = sources
 _SPEC.loader.exec_module(sources)
+_PSPEC = importlib.util.spec_from_file_location("tcl_tv_protocol_for_sources", _PROTOCOL)
+assert _PSPEC is not None and _PSPEC.loader is not None
+protocol = importlib.util.module_from_spec(_PSPEC)
+sys.modules[_PSPEC.name] = protocol
+_PSPEC.loader.exec_module(protocol)
 
 
 class SourceParseTests(unittest.TestCase):
@@ -70,6 +72,21 @@ class SourceParseTests(unittest.TestCase):
         self.assertEqual(sources.source_names(parsed), ["HDMI 1", "HDMI 2"])
         self.assertEqual(sources.find_source_index(parsed, "hdmi 2"), 1)
 
+    def test_copy_sources_keeps_tcl_key_repeats(self) -> None:
+        parsed = sources.copy_sources(
+            [
+                {
+                    "name": "HDMI 3",
+                    "buttons": ["source", "right", "right", "ok"],
+                    "interval": 0.4,
+                }
+            ]
+        )
+        self.assertEqual(
+            parsed[0]["buttons"],
+            ["source", "right", "right", "ok"],
+        )
+
     def test_parse_button_ids_dedupes_and_splits_text(self) -> None:
         self.assertEqual(
             sources.parse_button_ids(
@@ -81,6 +98,38 @@ class SourceParseTests(unittest.TestCase):
             sources.parse_button_ids("button.a; button.b, button.a"),
             ["button.a", "button.b"],
         )
+
+    def test_parse_source_actions_keeps_key_repeats_and_mixed_buttons(self) -> None:
+        self.assertEqual(
+            sources.parse_source_actions(
+                ["source", "right", "right", "ok", "button.ir_ok"]
+            ),
+            ["source", "right", "right", "ok", "button.ir_ok"],
+        )
+        self.assertEqual(
+            sources.parse_source_actions(
+                ["key:source:1", "key:right:1", "key:right:2", "ok"]
+            ),
+            ["source", "right", "right", "ok"],
+        )
+        self.assertEqual(
+            sources.unknown_source_actions(["source", "nope", "remote.ir"]),
+            ["nope", "remote.ir"],
+        )
+        self.assertEqual(
+            sources.encode_source_actions(["source", "right", "right", "button.ir_ok"]),
+            ["key:source:1", "key:right:1", "key:right:2", "button.ir_ok"],
+        )
+        self.assertEqual(
+            sources.classify_source_action("key:ok:3"),
+            ("key", "ok"),
+        )
+        self.assertEqual(
+            sources.classify_source_action("button.ir_source"),
+            ("button", "button.ir_source"),
+        )
+        self.assertIsNone(sources.classify_source_action("screenshot"))
+        self.assertEqual(sources.TCL_SOURCE_KEYS, set(protocol.KEYS))
 
     def test_name_in_use_is_case_insensitive(self) -> None:
         items = sources.copy_sources(

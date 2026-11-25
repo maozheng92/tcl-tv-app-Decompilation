@@ -60,14 +60,17 @@ from .sources import (
     DEFAULT_INTERVAL,
     MAX_INTERVAL,
     copy_sources,
+    encode_source_actions,
     find_source_index,
     name_in_use,
     normalize_name,
     parse_button_ids,
     parse_interval,
+    parse_source_actions,
     saved_options,
     source_names,
     source_payload,
+    unknown_source_actions,
 )
 
 
@@ -165,6 +168,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         name = source[ATTR_NAME] if source else ""
         hidden = bool(source.get(ATTR_HIDDEN)) if source else False
         buttons = list(source[ATTR_BUTTONS]) if source else []
+        encoded = encode_source_actions(buttons)
         interval = (
             parse_interval(source.get(ATTR_INTERVAL)) if source else DEFAULT_INTERVAL
         )
@@ -175,7 +179,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         else:
             schema[vol.Required(ATTR_NAME)] = name_field
         schema[vol.Required(ATTR_HIDDEN, default=hidden)] = BooleanSelector()
-        schema[vol.Optional(ATTR_BUTTONS, default=buttons)] = button_sequence_selector(
+        schema[vol.Optional(ATTR_BUTTONS, default=encoded)] = button_sequence_selector(
             self.hass, current=buttons
         )
         schema[vol.Required(ATTR_INTERVAL, default=interval)] = NumberSelector(
@@ -204,7 +208,9 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
 
     async def _commit_source(self, user_input: dict[str, Any]) -> ConfigFlowResult:
         name = normalize_name(user_input.get(ATTR_NAME))
-        buttons = parse_button_ids(user_input.get(ATTR_BUTTONS))
+        raw_buttons = user_input.get(ATTR_BUTTONS)
+        unknown = unknown_source_actions(raw_buttons)
+        buttons = parse_source_actions(raw_buttons)
         hidden = bool(user_input.get(ATTR_HIDDEN))
         interval = parse_interval(user_input.get(ATTR_INTERVAL))
         errors: dict[str, str] = {}
@@ -214,7 +220,9 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._data[CONF_SOURCES], name, exclude_index=self._edit_index
         ):
             errors[ATTR_NAME] = "name_in_use"
-        if not buttons:
+        if unknown:
+            errors[ATTR_BUTTONS] = "unknown_action"
+        elif not buttons:
             errors[ATTR_BUTTONS] = "buttons_required"
         step_id = "source_add" if self._edit_index is None else "source_form"
         preview = source_payload(
