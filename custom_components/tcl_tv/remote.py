@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TclTvConfigEntry
 from .entity import TclTvEntity, tv_errors
-from .protocol import KEY_ALIASES, KEYS, LIVE_TV_NAMES, resolve_key
+from .protocol import KEYS, LIVE_TV_NAMES, resolve_key
 
 
 async def async_setup_entry(
@@ -65,12 +65,9 @@ class TclTvRemote(TclTvEntity, RemoteEntity):
             else:
                 codes.append(code)
         if unknown:
-            aliases = ", ".join(
-                f"{alias}={canonical}" for alias, canonical in KEY_ALIASES.items()
-            )
             raise ServiceValidationError(
                 f"Unknown TCL key(s) {', '.join(unknown)}; "
-                f"valid keys: {', '.join(KEYS)}; aliases: {aliases}"
+                f"valid keys: {', '.join(KEYS)}; or a raw 149 integer 0–999"
             )
         repeats: int = kwargs.get(ATTR_NUM_REPEATS, 1)
         delay: float = kwargs.get(ATTR_DELAY_SECS, DEFAULT_DELAY_SECS)
