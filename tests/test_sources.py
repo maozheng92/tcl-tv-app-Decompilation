@@ -203,3 +203,6 @@ class SourceParseTests(unittest.TestCase):
             },
         )
         self.assertEqual(sources.saved_options({}), {})
+
+    def test_go_back_attr_exists(self) -> None:
+        self.assertEqual(sources.ATTR_GO_BACK, "go_back")

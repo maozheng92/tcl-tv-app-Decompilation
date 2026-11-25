@@ -20,7 +20,7 @@
     "step": {
       "init": {
         "title": "TCL TV options",
-        "description": "IR power-on: {power_on}\nInput sources: {source_count}. Changes apply only after Save.",
+        "description": "IR power-on: {power_on}\nInput sources: {source_count}. Changes apply only after Save (bottom right).",
         "menu_options": {
           "power_on": "IR power-on",
           "sources": "Input sources",
@@ -57,6 +57,7 @@
           "source_edit": "Edit source",
           "source_delete": "Delete source",
           "source_reorder": "Reorder sources",
+          "save": "Save",
           "sources_done": "Back"
         }
       },
@@ -95,14 +96,16 @@
           "hidden": "Keep the source configured but omit it from the TV source list.",
           "interval": "Seconds to wait after each press except the last.",
           "edit_sequence": "Turn on to pick TV keys or button entities again and set how many times each is pressed."
-        }
+        },
+        "submit": "Save"
       },
       "source_seq_kind": {
         "title": "Press sequence type",
         "description": "Current sequence: {sequence}\nChoose this TV's keys or Home Assistant button entities. You can add the other kind afterwards.",
         "menu_options": {
           "source_seq_keys": "This TV's keys",
-          "source_seq_buttons": "Button entities"
+          "source_seq_buttons": "Button entities",
+          "source_seq_kind_back": "Back"
         }
       },
       "source_seq_pick": {
@@ -143,21 +146,24 @@
         },
         "data_description": {
           "add_more": "Turn on to append more TV keys or button entities after these."
-        }
+        },
+        "submit": "Save"
       },
       "source_delete": {
         "title": "Delete input source",
-        "description": "Remove a source from the list. This cannot be undone after Save.",
+        "description": "Remove a source from the list. Save writes the change immediately; this cannot be undone.",
         "data": {
           "name": "Source"
-        }
+        },
+        "submit": "Save"
       },
       "source_reorder": {
         "title": "Reorder input sources",
         "description": "All input sources are listed. Drag to change the order shown on the media player. Keep every source in the list.",
         "data": {
           "source_order": "Order"
-        }
+        },
+        "submit": "Save"
       }
     },
     "error": {
