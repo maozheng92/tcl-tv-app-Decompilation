@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import importlib.util
 import struct
 import sys
@@ -133,6 +134,53 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert proto.should_toggle_mute(False, None, True) is True
     assert proto.should_toggle_mute(False, None, False) is False
     assert "直播" in proto.LIVE_TV_NAMES
+    assert "screenshot" not in proto.KEYS
+    assert proto.resolve_key("screenshot") is None
+    assert proto.resolve_key("截图") is None
+    assert proto.REMOTE_COMMANDS[-1] == "screenshot"
+    assert "screenshot" in proto.SCREENSHOT_NAMES
+    assert "截图" in proto.SCREENSHOT_NAMES
+
+
+def test_screenshot_reply_and_url_rewrite() -> None:
+    assert (
+        proto.parse_screenshot_reply(
+            "225>>0>>http://192.168.1.8:6554/NS_SCREENSHOT.png"
+        )
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    assert (
+        proto.rewrite_screenshot_url("http://:6554/NS_SCREENSHOT.png", "192.168.1.8")
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    assert (
+        proto.rewrite_screenshot_url(
+            "http://127.0.0.1:6554/NS_SCREENSHOT.png", "192.168.1.8"
+        )
+        == "http://192.168.1.8:6554/NS_SCREENSHOT.png"
+    )
+    with pytest.raises(proto.TclTvError):
+        proto.parse_screenshot_reply("225>>1")
+    with pytest.raises(proto.TclTvError, match="not supported"):
+        proto.parse_screenshot_reply("225>>2")
+    assert proto.screenshot_content_type(b"\x89PNG\r\n\x1a\nxxxx") == (
+        "image/png",
+        "png",
+    )
+    assert proto.screenshot_content_type(b"\xff\xd8\xffxxxx") == ("image/jpeg", "jpg")
+    assert proto.screenshot_content_type(b"GIF89aXXXX") == ("image/gif", "gif")
+    with pytest.raises(proto.TclTvError, match="not a PNG"):
+        proto.screenshot_content_type(b"<html>not an image</html>")
+    assert (
+        proto.screenshot_filename("客厅", datetime(2026, 11, 25, 22, 15, 32), "png")
+        == "客厅 2026-11-25 22-15-32.png"
+    )
+    assert proto.screenshot_filename("", datetime(2026, 1, 2, 3, 4, 5), "jpg") == (
+        "TCL TV 2026-01-02 03-04-05.jpg"
+    )
+    assert proto.screenshot_filename("a/b", datetime(2026, 1, 2, 3, 4, 5), "png") == (
+        "a-b 2026-01-02 03-04-05.png"
+    )
 
 
 async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
@@ -160,6 +208,10 @@ async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -
             reply = proto.encode_frame("131>>false", encrypted=True)
         elif text.startswith("223>>GET"):
             reply = proto.encode_frame(apps, encrypted=True)
+        elif text.startswith("225"):
+            reply = proto.encode_frame(
+                "225>>0>>http://127.0.0.1:6554/NS_SCREENSHOT.png", encrypted=True
+            )
         elif text.startswith("150"):
             reply = proto.encode_frame("150>>YES", encrypted=True)
         else:
@@ -189,6 +241,9 @@ async def test_client_handshake_volume_and_apps() -> None:
         assert await client.get_mute() is False
         apps = await client.get_apps()
         assert apps[0].package == "com.example.player"
+        assert await client.request_screenshot() == (
+            "http://127.0.0.1:6554/NS_SCREENSHOT.png"
+        )
         await client.send_key(20)
     finally:
         await client.close()

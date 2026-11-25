@@ -24,9 +24,12 @@ from collections import deque
 from collections.abc import Callable
 import contextlib
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import struct
 import time
+from urllib.parse import urlparse, urlunparse
+from urllib.request import urlopen
 import uuid
 
 from cryptography.hazmat.primitives import padding
@@ -36,7 +39,15 @@ _LOGGER = logging.getLogger(__name__)
 
 CONTROL_PORT = 6553
 DISCOVERY_PORT = 6537
+SHOT_HTTP_PORT = 6554
 WOL_PORTS = (7778, 9)
+_SHOT_MAX_BYTES = 6 * 1024 * 1024
+_SHOT_STATUS = {
+    1: "screenshot failed",
+    2: "screenshots are not supported",
+    3: "TV storage is full",
+    4: "screenshots are not supported",
+}
 
 # TCLPlus obfuscates the AES key as Base64 then XOR 0xFF
 # (com.tcl.tcastsdk.util.j.b.a / AlgorithmPacketWrite).
@@ -75,6 +86,9 @@ KEYS: dict[str, int] = {
     "smart_tv": 45,
 }
 
+# Advertised ``remote.send_command`` names. ``screenshot`` is not a 149 key.
+REMOTE_COMMANDS: tuple[str, ...] = (*KEYS, "screenshot")
+
 # MagiConnect TR_KEY_PLAYBACK. China firmware ignores 149>>26; media_player
 # still sends it for the play/pause buttons so the entity features remain.
 PLAYBACK_KEY = 26
@@ -98,6 +112,9 @@ RAW_KEY_MAX = 999
 # Names users may try for live TV. TCLPlus H5 remotekey "0" is GOTVAPP
 # (opens MagiConnect on the phone), not a TV 149 key.
 LIVE_TV_NAMES = frozenset({"live", "tv", "live_tv", "直播"})
+
+# Screenshot is T-Cast ``225>>``, exposed as a remote command like the 149 keys.
+SCREENSHOT_NAMES = frozenset({"screenshot", "截图"})
 
 
 def resolve_key(name: str) -> int | None:
@@ -237,6 +254,66 @@ def parse_apps(reply: str) -> list[TvApp]:
             )
         )
     return apps
+
+
+def parse_screenshot_reply(text: str) -> str:
+    """Parse ``225>><status>[>><url>]``. Status 0 is success with an HTTP URL."""
+    fields = text.split(_SEP)
+    if not fields or fields[0] != "225":
+        raise TclTvError(f"unexpected screenshot reply: {text!r}")
+    try:
+        status = int(fields[1]) if len(fields) > 1 and fields[1] else -1
+    except ValueError as err:
+        raise TclTvError(f"unexpected screenshot reply: {text!r}") from err
+    if status != 0:
+        raise TclTvError(_SHOT_STATUS.get(status, f"screenshot failed ({status})"))
+    url = fields[2].strip() if len(fields) > 2 else ""
+    if not url:
+        raise TclTvError("screenshot reply missing image URL")
+    return url
+
+
+def rewrite_screenshot_url(url: str, host: str) -> str:
+    """Fill in the TV address when the reply omits a usable host (``http://:6554/…``)."""
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise TclTvError(f"screenshot URL is not HTTP: {url!r}")
+    hostname = parsed.hostname
+    if not hostname or hostname in {"0.0.0.0", "127.0.0.1", "localhost"}:
+        hostname = host
+    port = parsed.port or SHOT_HTTP_PORT
+    return urlunparse(parsed._replace(netloc=f"{hostname}:{port}"))
+
+
+def download_screenshot(url: str, timeout: float = 10.0) -> bytes:
+    """HTTP GET the PNG/JPEG the TV published after ``225``."""
+    with urlopen(url, timeout=timeout) as resp:  # noqa: S310 — LAN URL from the TV
+        data = resp.read(_SHOT_MAX_BYTES + 1)
+    if not data:
+        raise TclTvError("empty screenshot")
+    if len(data) > _SHOT_MAX_BYTES:
+        raise TclTvError("screenshot too large")
+    return data
+
+
+def screenshot_content_type(data: bytes) -> tuple[str, str]:
+    """Return ``(content_type, file_extension)`` for an Image upload."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", "png"
+    if data.startswith(b"\xff\xd8"):
+        return "image/jpeg", "jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif", "gif"
+    raise TclTvError("screenshot is not a PNG, JPEG, or GIF image")
+
+
+def screenshot_filename(tv_name: str, when: datetime, ext: str) -> str:
+    """Display name stored in Media → Image upload."""
+    stamp = when.strftime("%Y-%m-%d %H-%M-%S")
+    name = " ".join((tv_name or "TCL TV").split()) or "TCL TV"
+    for bad in ("/", "\\"):
+        name = name.replace(bad, "-")
+    return f"{name} {stamp}.{ext}"
 
 
 def resolve_app_package(apps: list[TvApp], media_id: str) -> str | None:
@@ -460,6 +537,11 @@ class TclTvClient:
 
     async def launch_app(self, package: str) -> None:
         await self._send(f"223>>OPEN>>{package}")
+
+    async def request_screenshot(self) -> str:
+        """Ask the TV to capture a still (``225>>``); return the image URL."""
+        reply = await self._request("225>>", "225", timeout=15.0)
+        return parse_screenshot_reply(reply)
 
     def _write(self, text: str, plain: bool = False) -> None:
         if self._writer is None or self._closed:
