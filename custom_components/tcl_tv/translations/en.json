@@ -62,17 +62,15 @@
       },
       "source_add": {
         "title": "Add input source",
-        "description": "Name the input and the keys to press in order (this TV's remote keys and/or button entities). Pause between presses so the TV menu can catch up.",
+        "description": "Name the input first. Next you choose this TV's keys or button entities, then how many times to press each one.",
         "data": {
           "name": "Name",
           "hidden": "Hide from source list",
-          "buttons": "Press sequence",
           "interval": "Pause between presses"
         },
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
           "interval": "Seconds to wait after each press except the last."
         }
       },
@@ -85,18 +83,66 @@
       },
       "source_form": {
         "title": "Edit input source",
-        "description": "Change the name, visibility, or press sequence.",
+        "description": "Current sequence: {sequence}",
         "data": {
           "name": "Name",
           "hidden": "Hide from source list",
-          "buttons": "Press sequence",
-          "interval": "Pause between presses"
+          "interval": "Pause between presses",
+          "edit_sequence": "Replace press sequence"
         },
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
-          "interval": "Seconds to wait after each press except the last."
+          "interval": "Seconds to wait after each press except the last.",
+          "edit_sequence": "Turn on to pick TV keys or button entities again and set how many times each is pressed."
+        }
+      },
+      "source_seq_kind": {
+        "title": "Press sequence type",
+        "description": "Current sequence: {sequence}\nChoose this TV's keys or Home Assistant button entities. You can add the other kind afterwards.",
+        "menu_options": {
+          "source_seq_keys": "This TV's keys",
+          "source_seq_buttons": "Button entities"
+        }
+      },
+      "source_seq_pick": {
+        "title": "Choose presses",
+        "description": "Using {kind}. Current sequence: {sequence}\nPick items in the order they should be sent. Next you will set how many times each one is pressed.",
+        "data": {
+          "actions": "Items"
+        },
+        "data_description": {
+          "actions": "Drag to reorder. Each item is listed once; repeats are set on the next screen."
+        }
+      },
+      "source_seq_repeat": {
+        "title": "How many times",
+        "description": "Sequence so far: {sequence}\n{repeat_help}",
+        "data": {
+          "repeat_0": "{item_0}",
+          "repeat_1": "{item_1}",
+          "repeat_2": "{item_2}",
+          "repeat_3": "{item_3}",
+          "repeat_4": "{item_4}",
+          "repeat_5": "{item_5}",
+          "repeat_6": "{item_6}",
+          "repeat_7": "{item_7}",
+          "repeat_8": "{item_8}",
+          "repeat_9": "{item_9}",
+          "repeat_10": "{item_10}",
+          "repeat_11": "{item_11}",
+          "repeat_12": "{item_12}",
+          "repeat_13": "{item_13}",
+          "repeat_14": "{item_14}",
+          "repeat_15": "{item_15}",
+          "repeat_16": "{item_16}",
+          "repeat_17": "{item_17}",
+          "repeat_18": "{item_18}",
+          "repeat_19": "{item_19}",
+          "add_more": "Add another group"
+        },
+        "data_description": {
+          "add_more": "Turn on to append more TV keys or button entities after these."
         }
       },
       "source_delete": {
@@ -116,6 +162,7 @@
     },
     "error": {
       "buttons_required": "Select at least one TV key or button entity.",
+      "pick_required": "Select at least one item of this type.",
       "unknown_action": "That press sequence has an unknown key or button.",
       "command_required": "Select or enter the IR command name.",
       "device_required": "This remote requires a device name.",

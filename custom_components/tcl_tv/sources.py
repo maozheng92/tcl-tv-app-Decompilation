@@ -13,13 +13,19 @@ ATTR_NAME = "name"
 ATTR_HIDDEN = "hidden"
 ATTR_BUTTONS = "buttons"
 ATTR_INTERVAL = "interval"
+ATTR_ACTIONS = "actions"
+ATTR_ADD_MORE = "add_more"
+ATTR_EDIT_SEQUENCE = "edit_sequence"
+
+KIND_KEY = "key"
+KIND_BUTTON = "button"
 
 DEFAULT_INTERVAL = 0.4
 MAX_INTERVAL = 10.0
+SOURCE_REPEAT_MIN = 1
+SOURCE_REPEAT_MAX = 20
 
-# Select selectors cannot repeat the same value, so each T-Cast key is
-# offered as several unique tokens that all decode back to the key name.
-SOURCE_KEY_SLOT_MAX = 8
+# Older option forms used unique ``key:<name>:<n>`` tokens; still accept them.
 _SOURCE_KEY_PREFIX = "key:"
 
 # Names only; keep in sync with protocol.KEYS (this file is tested offline).
@@ -112,31 +118,79 @@ def unknown_source_actions(raw: Any) -> list[str]:
     return [token for token in _token_list(raw) if classify_source_action(token) is None]
 
 
-def encode_source_actions(actions: list[str]) -> list[str]:
-    """Unique form tokens so the same T-Cast key can appear more than once."""
-    counts: dict[str, int] = {}
-    out: list[str] = []
-    for action in actions:
-        classified = classify_source_action(action)
-        if classified is None:
-            continue
-        kind, value = classified
-        if kind != "key":
-            out.append(value)
-            continue
-        counts[value] = counts.get(value, 0) + 1
-        slot = counts[value]
-        if slot <= SOURCE_KEY_SLOT_MAX:
-            out.append(f"{_SOURCE_KEY_PREFIX}{value}:{slot}")
+def parse_repeat(raw: Any, *, default: int = SOURCE_REPEAT_MIN) -> int:
+    try:
+        value = int(float(raw))
+    except (TypeError, ValueError):
+        return default
+    if value < SOURCE_REPEAT_MIN:
+        return SOURCE_REPEAT_MIN
+    if value > SOURCE_REPEAT_MAX:
+        return SOURCE_REPEAT_MAX
+    return value
+
+
+def collapse_source_actions(raw: Any) -> list[tuple[str, int]]:
+    """Merge consecutive identical presses into ``(action, count)`` steps."""
+    out: list[tuple[str, int]] = []
+    for value in parse_source_actions(raw):
+        if out and out[-1][0] == value:
+            out[-1] = (value, out[-1][1] + 1)
         else:
-            out.append(value)
+            out.append((value, 1))
     return out
 
 
-def source_key_tokens(name: str) -> list[str]:
-    if name not in TCL_SOURCE_KEYS:
-        return []
-    return [f"{_SOURCE_KEY_PREFIX}{name}:{slot}" for slot in range(1, SOURCE_KEY_SLOT_MAX + 1)]
+def expand_source_steps(steps: list[tuple[str, int]]) -> list[str]:
+    """Turn ``(action, count)`` steps back into a press list."""
+    out: list[str] = []
+    for action, count in steps:
+        classified = classify_source_action(action)
+        if classified is None:
+            continue
+        out.extend([classified[1]] * parse_repeat(count))
+    return out
+
+
+def unique_actions_of_kind(raw: Any, kind: str) -> list[str]:
+    """Ordered unique key names or button ids of one kind."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for token in parse_source_actions(raw):
+        classified = classify_source_action(token)
+        if classified is None or classified[0] != kind:
+            continue
+        value = classified[1]
+        if value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
+
+
+def counts_for_kind(raw: Any, kind: str) -> dict[str, int]:
+    """First consecutive-repeat count for each action of this kind."""
+    counts: dict[str, int] = {}
+    for value, count in collapse_source_actions(raw):
+        classified = classify_source_action(value)
+        if classified is None or classified[0] != kind:
+            continue
+        if classified[1] not in counts:
+            counts[classified[1]] = count
+    return counts
+
+
+def sequence_kind(raw: Any) -> str | None:
+    """``key`` or ``button`` when every press is the same kind; else ``None``."""
+    kinds: set[str] = set()
+    for token in parse_source_actions(raw):
+        classified = classify_source_action(token)
+        if classified is None:
+            continue
+        kinds.add(classified[0])
+    if len(kinds) == 1:
+        return next(iter(kinds))
+    return None
 
 
 def parse_interval(raw: Any) -> float:

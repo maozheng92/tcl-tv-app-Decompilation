@@ -117,10 +117,6 @@ class SourceParseTests(unittest.TestCase):
             ["nope", "remote.ir"],
         )
         self.assertEqual(
-            sources.encode_source_actions(["source", "right", "right", "button.ir_ok"]),
-            ["key:source:1", "key:right:1", "key:right:2", "button.ir_ok"],
-        )
-        self.assertEqual(
             sources.classify_source_action("key:ok:3"),
             ("key", "ok"),
         )
@@ -130,6 +126,43 @@ class SourceParseTests(unittest.TestCase):
         )
         self.assertIsNone(sources.classify_source_action("screenshot"))
         self.assertEqual(sources.TCL_SOURCE_KEYS, set(protocol.KEYS))
+
+    def test_collapse_and_expand_repeat_counts(self) -> None:
+        self.assertEqual(
+            sources.collapse_source_actions(
+                ["source", "right", "right", "right", "ok"]
+            ),
+            [("source", 1), ("right", 3), ("ok", 1)],
+        )
+        self.assertEqual(
+            sources.expand_source_steps(
+                [("source", 1), ("right", 2), ("ok", 1), ("button.ir_ok", 3)]
+            ),
+            ["source", "right", "right", "ok", "button.ir_ok", "button.ir_ok", "button.ir_ok"],
+        )
+        self.assertEqual(
+            sources.unique_actions_of_kind(
+                ["source", "right", "right", "ok", "button.ir_ok"],
+                sources.KIND_KEY,
+            ),
+            ["source", "right", "ok"],
+        )
+        self.assertEqual(
+            sources.counts_for_kind(["source", "right", "right", "ok"], sources.KIND_KEY),
+            {"source": 1, "right": 2, "ok": 1},
+        )
+        self.assertEqual(
+            sources.sequence_kind(["source", "right", "ok"]),
+            sources.KIND_KEY,
+        )
+        self.assertEqual(
+            sources.sequence_kind(["button.a", "button.b"]),
+            sources.KIND_BUTTON,
+        )
+        self.assertIsNone(sources.sequence_kind(["source", "button.ir_ok"]))
+        self.assertEqual(sources.parse_repeat(0), sources.SOURCE_REPEAT_MIN)
+        self.assertEqual(sources.parse_repeat(99), sources.SOURCE_REPEAT_MAX)
+        self.assertEqual(sources.parse_repeat("3"), 3)
 
     def test_name_in_use_is_case_insensitive(self) -> None:
         items = sources.copy_sources(
