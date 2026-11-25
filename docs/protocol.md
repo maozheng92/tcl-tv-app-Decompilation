@@ -22,7 +22,7 @@ TCLPlus 内嵌的仍是 **T-Cast / tnscreen 局域网协议**，不是另一套�
 |---|---|---|
 | UDP 发现 | **6537** | `Cons.DEFAULT_BROADCAST_PORT` / `TCLDeviceManager.init` 写入扫描配置 |
 | TCP 控制 | **6553** | `TCLSocket` 连接写死 `6553`；`TCLDevice.connect` |
-| 截图 HTTP | 6554 | `TCLShotPicProxy`（本集成未实现） |
+| 截图 HTTP | 6554 | `TCLShotPicProxy`；`remote.send_command` 的 `screenshot` 走 `225>>`，图片写入 HA **Image upload** |
 | 语音 PCM | 4332 | `VoiceControlProxy`（本集成未实现） |
 
 TCP 帧：
@@ -131,7 +131,7 @@ TCLPlus `muteAction` 发 `149>>23`，是**切换**。MagiConnect `131>>true/fals
 
 ### 截图
 
-不是 `149` 按键。`TCLShotPicProxy.shotPic` 发 **`225>>`**（包 `a.a.I`）。回复 `225>><status>[>><url>]`：`0` 成功并带 HTTP 地址，`1` 失败，`2`/`4` 不支持，`3` 电视存储满。能力字符串第 7 个字符为 `0` 时 SDK 认为不支持（`function` 位 6）。URL 里主机可能为空（`http://:6554/NS_SCREENSHOT.png`），客户端用电视 IP 补上后再 GET。端口默认 **6554**。视频硬件层常常截不到（黑），字幕/时钟可以。
+不是 `149` 按键，但本集成把它做成与其它键相同的 `remote.send_command` 名 `screenshot`（别名 `截图`）。`TCLShotPicProxy.shotPic` 发 **`225>>`**（包 `a.a.I`）。回复 `225>><status>[>><url>]`：`0` 成功并带 HTTP 地址，`1` 失败，`2`/`4` 不支持，`3` 电视存储满。能力字符串第 7 个字符为 `0` 时 SDK 认为不支持（`function` 位 6）。URL 里主机可能为空（`http://:6554/NS_SCREENSHOT.png`），客户端用电视 IP 补上后再 GET。端口默认 **6554**。拉到的图片写入 Home Assistant **媒体 → Image upload**（`image_upload` 存储集）。视频硬件层常常截不到（黑），字幕/时钟可以。
 
 ### 直播
 

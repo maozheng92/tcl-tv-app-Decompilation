@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_ENTITY_ID
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CLIENT_NAME,
@@ -31,8 +32,13 @@ from .protocol import (
     TvApp,
     TvInfo,
     async_wake,
+    download_screenshot,
+    rewrite_screenshot_url,
+    screenshot_content_type,
+    screenshot_filename,
     should_toggle_mute,
 )
+from .screenshot import async_save_to_image_upload
 from .sources import (
     ATTR_BUTTONS,
     ATTR_INTERVAL,
@@ -256,3 +262,22 @@ class TclTvHub:
     async def async_turn_off(self) -> None:
         if self.connected:
             await self.require_client().send_key(20)
+
+    async def async_save_screenshot(self) -> dict:
+        """Capture via T-Cast ``225>>`` and store the file in Media → Image upload."""
+        client = self.require_client()
+        url = await client.request_screenshot()
+        url = rewrite_screenshot_url(url, self.host)
+        data = await self.hass.async_add_executor_job(download_screenshot, url)
+        content_type, ext = screenshot_content_type(data)
+        filename = screenshot_filename(self.entry.title, dt_util.now(), ext)
+        item = await async_save_to_image_upload(
+            self.hass, data, filename, content_type
+        )
+        _LOGGER.info(
+            "TV %s screenshot saved to Image upload as %s (%s)",
+            self.host,
+            filename,
+            item.get("id"),
+        )
+        return item

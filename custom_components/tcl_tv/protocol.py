@@ -24,6 +24,7 @@ from collections import deque
 from collections.abc import Callable
 import contextlib
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import struct
 import time
@@ -85,6 +86,9 @@ KEYS: dict[str, int] = {
     "smart_tv": 45,
 }
 
+# Advertised ``remote.send_command`` names. ``screenshot`` is not a 149 key.
+REMOTE_COMMANDS: tuple[str, ...] = (*KEYS, "screenshot")
+
 # MagiConnect TR_KEY_PLAYBACK. China firmware ignores 149>>26; media_player
 # still sends it for the play/pause buttons so the entity features remain.
 PLAYBACK_KEY = 26
@@ -108,6 +112,9 @@ RAW_KEY_MAX = 999
 # Names users may try for live TV. TCLPlus H5 remotekey "0" is GOTVAPP
 # (opens MagiConnect on the phone), not a TV 149 key.
 LIVE_TV_NAMES = frozenset({"live", "tv", "live_tv", "直播"})
+
+# Screenshot is T-Cast ``225>>``, exposed as a remote command like the 149 keys.
+SCREENSHOT_NAMES = frozenset({"screenshot", "截图"})
 
 
 def resolve_key(name: str) -> int | None:
@@ -287,6 +294,26 @@ def download_screenshot(url: str, timeout: float = 10.0) -> bytes:
     if len(data) > _SHOT_MAX_BYTES:
         raise TclTvError("screenshot too large")
     return data
+
+
+def screenshot_content_type(data: bytes) -> tuple[str, str]:
+    """Return ``(content_type, file_extension)`` for an Image upload."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", "png"
+    if data.startswith(b"\xff\xd8"):
+        return "image/jpeg", "jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif", "gif"
+    raise TclTvError("screenshot is not a PNG, JPEG, or GIF image")
+
+
+def screenshot_filename(tv_name: str, when: datetime, ext: str) -> str:
+    """Display name stored in Media → Image upload."""
+    stamp = when.strftime("%Y-%m-%d %H-%M-%S")
+    name = " ".join((tv_name or "TCL TV").split()) or "TCL TV"
+    for bad in ("/", "\\"):
+        name = name.replace(bad, "-")
+    return f"{name} {stamp}.{ext}"
 
 
 def resolve_app_package(apps: list[TvApp], media_id: str) -> str | None:

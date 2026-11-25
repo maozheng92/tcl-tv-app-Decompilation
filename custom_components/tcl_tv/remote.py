@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TclTvConfigEntry
 from .entity import TclTvEntity, tv_errors
-from .protocol import KEYS, LIVE_TV_NAMES, resolve_key
+from .protocol import LIVE_TV_NAMES, REMOTE_COMMANDS, SCREENSHOT_NAMES, resolve_key
 
 
 async def async_setup_entry(
@@ -29,13 +29,13 @@ async def async_setup_entry(
 
 
 class TclTvRemote(TclTvEntity, RemoteEntity):
-    """``remote.send_command`` takes key names from ``protocol.KEYS``."""
+    """``remote.send_command`` takes names from ``protocol.REMOTE_COMMANDS``."""
 
     _attr_name = None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"commands": list(KEYS)}
+        return {"commands": list(REMOTE_COMMANDS)}
 
     @property
     def is_on(self) -> bool | None:
@@ -56,28 +56,32 @@ class TclTvRemote(TclTvEntity, RemoteEntity):
                 "TCLPlus has no T-Cast key for 直播 / live / tv; open the live-TV "
                 "app with media_player.play_media (media_content_type: app)"
             )
-        codes: list[int] = []
         unknown: list[str] = []
         for name in names:
-            code = resolve_key(name)
-            if code is None:
+            if name in SCREENSHOT_NAMES:
+                continue
+            if resolve_key(name) is None:
                 unknown.append(name)
-            else:
-                codes.append(code)
         if unknown:
             raise ServiceValidationError(
                 f"Unknown TCL key(s) {', '.join(unknown)}; "
-                f"valid keys: {', '.join(KEYS)}; or a raw 149 integer 0–999"
+                f"valid keys: {', '.join(REMOTE_COMMANDS)}; or a raw 149 integer 0–999"
             )
         repeats: int = kwargs.get(ATTR_NUM_REPEATS, 1)
         delay: float = kwargs.get(ATTR_DELAY_SECS, DEFAULT_DELAY_SECS)
         with tv_errors():
-            client = self.hub.require_client()
-            for i in range(repeats):
-                for j, code in enumerate(codes):
-                    if i or j:
+            first = True
+            for _ in range(repeats):
+                for name in names:
+                    if not first:
                         await asyncio.sleep(delay)
-                    await client.send_key(code)
+                    first = False
+                    if name in SCREENSHOT_NAMES:
+                        await self.hub.async_save_screenshot()
+                    else:
+                        code = resolve_key(name)
+                        assert code is not None
+                        await self.hub.require_client().send_key(code)
         if any(name in ("volume_up", "volume_down", "mute") for name in names):
             with tv_errors():
                 await self.hub.async_refresh_volume()

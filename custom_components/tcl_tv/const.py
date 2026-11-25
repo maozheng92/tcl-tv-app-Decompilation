@@ -3,7 +3,7 @@
 from homeassistant.const import Platform
 
 DOMAIN = "tcl_tv"
-PLATFORMS = [Platform.MEDIA_PLAYER, Platform.REMOTE, Platform.CAMERA]
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.REMOTE]
 
 CONF_CLIENT_ID = "client_id"
 CONF_MAC = "mac"

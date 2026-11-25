@@ -8,5 +8,6 @@
   "issue_tracker": "https://github.com/maozheng92/tcl-tv-app-Decompilation/issues",
   "integration_type": "device",
   "iot_class": "local_polling",
+  "after_dependencies": ["image_upload"],
   "requirements": []
 }

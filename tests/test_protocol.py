@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import importlib.util
 import struct
 import sys
@@ -133,6 +134,12 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert proto.should_toggle_mute(False, None, True) is True
     assert proto.should_toggle_mute(False, None, False) is False
     assert "直播" in proto.LIVE_TV_NAMES
+    assert "screenshot" not in proto.KEYS
+    assert proto.resolve_key("screenshot") is None
+    assert proto.resolve_key("截图") is None
+    assert proto.REMOTE_COMMANDS[-1] == "screenshot"
+    assert "screenshot" in proto.SCREENSHOT_NAMES
+    assert "截图" in proto.SCREENSHOT_NAMES
 
 
 def test_screenshot_reply_and_url_rewrite() -> None:
@@ -156,6 +163,24 @@ def test_screenshot_reply_and_url_rewrite() -> None:
         proto.parse_screenshot_reply("225>>1")
     with pytest.raises(proto.TclTvError, match="not supported"):
         proto.parse_screenshot_reply("225>>2")
+    assert proto.screenshot_content_type(b"\x89PNG\r\n\x1a\nxxxx") == (
+        "image/png",
+        "png",
+    )
+    assert proto.screenshot_content_type(b"\xff\xd8\xffxxxx") == ("image/jpeg", "jpg")
+    assert proto.screenshot_content_type(b"GIF89aXXXX") == ("image/gif", "gif")
+    with pytest.raises(proto.TclTvError, match="not a PNG"):
+        proto.screenshot_content_type(b"<html>not an image</html>")
+    assert (
+        proto.screenshot_filename("客厅", datetime(2026, 11, 25, 22, 15, 32), "png")
+        == "客厅 2026-11-25 22-15-32.png"
+    )
+    assert proto.screenshot_filename("", datetime(2026, 1, 2, 3, 4, 5), "jpg") == (
+        "TCL TV 2026-01-02 03-04-05.jpg"
+    )
+    assert proto.screenshot_filename("a/b", datetime(2026, 1, 2, 3, 4, 5), "png") == (
+        "a-b 2026-01-02 03-04-05.png"
+    )
 
 
 async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
