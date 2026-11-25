@@ -56,15 +56,6 @@ from .ir_flow import (
     tcl_key_choice_selector,
 )
 from .protocol import TclTvClient, TclTvError, async_probe
-
-
-class _SchemaWithBack(vol.Schema):
-    """Accept ``{go_back: True}`` from the footer Back button without other fields."""
-
-    def __call__(self, data: Any) -> Any:
-        if isinstance(data, dict) and data.get(ATTR_GO_BACK):
-            return {ATTR_GO_BACK: True}
-        return super().__call__(data)
 from .sources import (
     ATTR_ACTIONS,
     ATTR_ADD_MORE,
@@ -96,6 +87,15 @@ from .sources import (
     unique_actions_of_kind,
     unknown_source_actions,
 )
+
+
+class _SchemaWithBack(vol.Schema):
+    """Accept ``{go_back: True}`` so Back does not require other fields."""
+
+    def __call__(self, data: Any) -> Any:
+        if isinstance(data, dict) and data.get(ATTR_GO_BACK):
+            return {ATTR_GO_BACK: True}
+        return super().__call__(data)
 
 
 class TclTvConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -180,16 +180,24 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         }
         self._draft_ready = True
 
-    def _with_back(self, schema: vol.Schema | dict[Any, Any]) -> vol.Schema:
-        mapping = schema.schema if isinstance(schema, vol.Schema) else schema
-        return _SchemaWithBack(mapping)
-
     def _wants_back(self, user_input: dict[str, Any] | None) -> bool:
         return bool(user_input and user_input.get(ATTR_GO_BACK))
 
-    def _persist(self) -> ConfigFlowResult:
-        self._ensure_draft()
-        return self.async_create_entry(data=saved_options(self._data))
+    def _with_back(self, schema: vol.Schema | dict[Any, Any]) -> vol.Schema:
+        mapping = schema.schema if isinstance(schema, vol.Schema) else schema
+        fields: dict[Any, Any] = {
+            vol.Optional(ATTR_GO_BACK, default=False): BooleanSelector()
+        }
+        for key, typ in mapping.items():
+            if isinstance(key, vol.Required):
+                default = getattr(key, "_default", getattr(key, "default", vol.UNDEFINED))
+                if default is vol.UNDEFINED:
+                    fields[vol.Optional(key.schema)] = typ
+                else:
+                    fields[vol.Optional(key.schema, default=default)] = typ
+            else:
+                fields[key] = typ
+        return _SchemaWithBack(fields)
 
     def _show_form(
         self,
@@ -197,7 +205,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         schema: vol.Schema | dict[Any, Any],
         *,
         errors: dict[str, str] | None = None,
-        last_step: bool | None = None,
         placeholders: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
         kwargs: dict[str, Any] = {
@@ -206,8 +213,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         }
         if errors:
             kwargs["errors"] = errors
-        if last_step is not None:
-            kwargs["last_step"] = last_step
         if placeholders is not None:
             kwargs["description_placeholders"] = placeholders
         return self.async_show_form(**kwargs)
@@ -371,7 +376,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
     async def async_step_save(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        return self._persist()
+        self._ensure_draft()
+        return self.async_create_entry(data=saved_options(self._data))
 
     async def async_step_power_on(
         self, user_input: dict[str, Any] | None = None
@@ -398,7 +404,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             "power_on",
             remote_step_schema(self.hass, current_remote=current_s),
             errors=errors,
-            last_step=False,
         )
 
     async def async_step_ir_details(
@@ -449,7 +454,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             "ir_details",
             schema,
             errors=errors,
-            last_step=False,
             placeholders={
                 "remote_entity": remote,
                 "codes_file": ir_codes_filename(self.hass, remote),
@@ -467,8 +471,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             menu.extend(["source_edit", "source_delete"])
             if len(self._data[CONF_SOURCES]) > 1:
                 menu.append("source_reorder")
-        # save / sources_done are footer actions; the frontend script hides the rows.
-        menu.extend(["save", "sources_done"])
+        menu.append("sources_done")
         return self.async_show_menu(
             step_id="sources",
             menu_options=menu,
@@ -491,7 +494,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 schema = self._source_meta_schema(None, editing=False)
             else:
                 schema = self._source_meta_schema(self._source_meta, editing=False)
-            return self._show_form("source_add", schema, last_step=False)
+            return self._show_form("source_add", schema)
         if self._wants_back(user_input):
             return await self.async_step_sources()
         preview = {
@@ -505,7 +508,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 "source_add",
                 self._source_meta_schema(preview, editing=False),
                 errors=errors,
-                last_step=False,
             )
         self._store_source_meta(user_input)
         self._seq_actions = []
@@ -528,14 +530,11 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                     "source_edit",
                     self._source_pick_schema(),
                     errors={"base": "unknown_source"},
-                    last_step=False,
                 )
             self._edit_index = index
             self._source_meta = None
             return await self.async_step_source_form()
-        return self._show_form(
-            "source_edit", self._source_pick_schema(), last_step=False
-        )
+        return self._show_form("source_edit", self._source_pick_schema())
 
     async def async_step_source_form(
         self, user_input: dict[str, Any] | None = None
@@ -646,7 +645,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             "source_seq_pick",
             {vol.Required(ATTR_ACTIONS, default=defaults): selector},
             errors=errors,
-            last_step=False,
             placeholders={
                 "kind": source_kind_label(self.hass, self._seq_kind),
                 "sequence": self._sequence_preview(),

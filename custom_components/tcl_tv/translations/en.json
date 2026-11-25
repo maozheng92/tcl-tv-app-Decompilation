@@ -20,7 +20,7 @@
     "step": {
       "init": {
         "title": "TCL TV options",
-        "description": "IR power-on: {power_on}\nInput sources: {source_count}. Changes apply only after Save (bottom right).",
+        "description": "IR power-on: {power_on}\nInput sources: {source_count}. Changes apply only after Save.",
         "menu_options": {
           "power_on": "IR power-on",
           "sources": "Input sources",
@@ -31,9 +31,11 @@
         "title": "IR power-on remote",
         "description": "Pick an infrared remote (Broadlink, Harmony Hub, or Xiaomi Home). Leave empty to keep using Wake-on-LAN.",
         "data": {
+          "go_back": "Go back",
           "power_on_remote": "IR remote"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "power_on_remote": "A Home Assistant remote entity that has learned IR codes."
         }
       },
@@ -41,10 +43,12 @@
         "title": "Power-on IR command",
         "description": "Choose the learned device and command for {remote_entity} (codes file: {codes_file}).",
         "data": {
+          "go_back": "Go back",
           "power_on_device": "Device",
           "power_on_command": "Command"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "power_on_device": "Device name from the remote's learned codes. Required for Harmony Hub and Xiaomi Home.",
           "power_on_command": "Command name from that device (for example Power or power_on)."
         }
@@ -57,7 +61,6 @@
           "source_edit": "Edit source",
           "source_delete": "Delete source",
           "source_reorder": "Reorder sources",
-          "save": "Save",
           "sources_done": "Back"
         }
       },
@@ -65,11 +68,13 @@
         "title": "Add input source",
         "description": "Name the input first. Next you choose this TV's keys or button entities, then how many times to press each one.",
         "data": {
+          "go_back": "Go back",
           "name": "Name",
           "hidden": "Hide from source list",
           "interval": "Pause between presses"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
           "interval": "Seconds to wait after each press except the last."
@@ -79,20 +84,25 @@
         "title": "Edit input source",
         "description": "Pick the source to change.",
         "data": {
+          "go_back": "Go back",
           "name": "Source"
+        },
+        "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page."
         }
       },
       "source_form": {
         "title": "Edit input source",
         "description": "Current sequence: {sequence}",
-        "submit": "Submit",
         "data": {
+          "go_back": "Go back",
           "name": "Name",
           "hidden": "Hide from source list",
           "interval": "Pause between presses",
           "edit_sequence": "Replace press sequence"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
           "interval": "Seconds to wait after each press except the last.",
@@ -112,17 +122,19 @@
         "title": "Choose presses",
         "description": "Using {kind}. Current sequence: {sequence}\nPick items in the order they should be sent. Next you will set how many times each one is pressed.",
         "data": {
+          "go_back": "Go back",
           "actions": "Items"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "actions": "Drag to reorder. Each item is listed once; repeats are set on the next screen."
         }
       },
       "source_seq_repeat": {
         "title": "How many times",
         "description": "Sequence so far: {sequence}\n{repeat_help}",
-        "submit": "Submit",
         "data": {
+          "go_back": "Go back",
           "repeat_0": "{item_0}",
           "repeat_1": "{item_1}",
           "repeat_2": "{item_2}",
@@ -146,23 +158,30 @@
           "add_more": "Add another group"
         },
         "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page.",
           "add_more": "Turn on to append more TV keys or button entities after these."
         }
       },
       "source_delete": {
         "title": "Delete input source",
-        "description": "Remove a source from the list. This cannot be undone after Save on the sources or options screen.",
-        "submit": "Submit",
+        "description": "Remove a source from the list. This cannot be undone after Save.",
         "data": {
+          "go_back": "Go back",
           "name": "Source"
+        },
+        "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page."
         }
       },
       "source_reorder": {
         "title": "Reorder input sources",
         "description": "All input sources are listed. Drag to change the order shown on the media player. Keep every source in the list.",
-        "submit": "Submit",
         "data": {
+          "go_back": "Go back",
           "source_order": "Order"
+        },
+        "data_description": {
+          "go_back": "Turn on and submit to return to the previous screen without applying this page."
         }
       }
     },
