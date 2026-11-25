@@ -295,7 +295,7 @@ def source_kind_label(hass: HomeAssistant, kind: str) -> str:
     lang = str(getattr(getattr(hass, "config", None), "language", "") or "")
     chinese = lang.casefold().startswith("zh")
     if kind == KIND_BUTTON:
-        return "Button 实体" if chinese else "Button entities"
+        return "按钮实体" if chinese else "Button entities"
     return "本集成按键" if chinese else "This TV's keys"
 
 

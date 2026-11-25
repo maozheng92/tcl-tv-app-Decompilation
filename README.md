@@ -13,7 +13,7 @@
 
 开机键：在集成条目的 **配置 / Configure** 里选择红外 `remote.*`（Broadlink / Harmony Hub / 小米万能遥控），再从该遥控已学习的码库中**下拉选择**设备与开机指令（实现参考 [ir_television](https://github.com/maozheng92/ir_television)）。设置后，`turn_on` 会调用 `remote.send_command`；遥控留空则仍发 Wake-on-LAN。
 
-输入源：T-Cast **不能**枚举 HDMI 口。在同一配置菜单的 **输入源** 中手动添加、修改、删除、隐藏，并**列出全部输入源拖动排序**。每个输入源的按键序列先选类型（本集成按键或 `button.*`），再勾选内容，然后为每一项填写重复次数（例如：输入源 ×1 → 右 ×2 → 确认 ×1）。可再追加另一组，以便本机键和 button 混用。`select_source` 只列出未隐藏的自定义输入源。
+输入源：T-Cast **不能**枚举 HDMI 口。在同一配置菜单的 **输入源** 中手动添加、修改、删除、隐藏，并**列出全部输入源拖动排序**。每个输入源的按键序列先选类型（本集成按键或按钮实体），再勾选内容，然后为每一项填写重复次数（例如：输入源 ×1 → 右 ×2 → 确认 ×1）。可再追加另一组，以便本机键和按钮实体混用。`select_source` 只列出未隐藏的自定义输入源。
 
 已安装应用**不出现在输入源列表**（与官方 Sony Bravia 集成相同）：在媒体播放器的 **媒体浏览器 → Applications** 里打开，或用 `media_player.play_media`（`media_content_type: app`）。
 

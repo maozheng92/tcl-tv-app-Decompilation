@@ -20,21 +20,25 @@
     "step": {
       "init": {
         "title": "TCL 电视选项",
-        "description": "红外开机：{power_on}\n输入源：{source_count} 个。点「保存」后才会写入。",
-        "menu_options": {
-          "power_on": "红外开机",
-          "sources": "输入源",
-          "save": "保存"
-        }
+        "description": "红外开机：{power_on}\n输入源：{source_count} 个。点选一项再按保存进入配置；不选则保存当前设置。",
+        "data": {
+          "next": "配置"
+        },
+        "data_description": {
+          "next": "点选红外开机或输入源后按保存进入；不选直接保存。"
+        },
+        "submit": "保存"
       },
       "power_on": {
         "title": "红外开机遥控",
         "description": "选择红外遥控器（Broadlink、Harmony Hub 或小米万能遥控）。留空则继续使用 Wake-on-LAN。",
         "data": {
-          "power_on_remote": "红外遥控"
+          "power_on_remote": "红外遥控",
+          "go_back": "返回"
         },
         "data_description": {
-          "power_on_remote": "已学习红外码的 Home Assistant remote 实体。"
+          "power_on_remote": "已学习红外码的 Home Assistant remote 实体。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
         }
       },
       "ir_details": {
@@ -42,43 +46,52 @@
         "description": "从 {remote_entity} 已学习的码库中选择设备与指令（码文件：{codes_file}）。",
         "data": {
           "power_on_device": "设备",
-          "power_on_command": "指令"
+          "power_on_command": "指令",
+          "go_back": "返回"
         },
         "data_description": {
           "power_on_device": "红外码库中的设备名。Harmony Hub 与小米万能遥控必填。",
-          "power_on_command": "该设备下的指令名，例如 Power 或 power_on。"
-        }
+          "power_on_command": "该设备下的指令名，例如 Power 或 power_on。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
+        },
+        "submit": "保存"
       },
       "sources": {
         "title": "输入源",
-        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的本机按键和/或 button 实体（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}",
-        "menu_options": {
-          "source_add": "添加输入源",
-          "source_edit": "修改输入源",
-          "source_delete": "删除输入源",
-          "source_reorder": "调整顺序",
-          "sources_done": "返回"
-        }
+        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的本机按键和/或按钮实体（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}\n点选一项再按保存执行；不选则保存全部输入源。选「返回」再按保存回到上一级。",
+        "data": {
+          "next": "操作"
+        },
+        "data_description": {
+          "next": "添加、修改、删除、排序，或返回。不选直接保存。"
+        },
+        "submit": "保存"
       },
       "source_add": {
         "title": "添加输入源",
-        "description": "先填写名称。下一步选择用本集成按键还是 button 实体，再勾选内容，并为每一项填写重复次数。",
+        "description": "先填写名称。下一步选择用本集成按键还是按钮实体，再勾选内容，并为每一项填写重复次数。",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
-          "interval": "按键间隔"
+          "interval": "按键间隔",
+          "go_back": "返回"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "interval": "每次按下后等待的秒数（最后一次除外）。"
+          "interval": "每次按下后等待的秒数（最后一次除外）。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
         }
       },
       "source_edit": {
         "title": "修改输入源",
         "description": "选择要修改的输入源。",
         "data": {
-          "name": "输入源"
+          "name": "输入源",
+          "go_back": "返回"
+        },
+        "data_description": {
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
         }
       },
       "source_form": {
@@ -88,31 +101,40 @@
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
           "interval": "按键间隔",
-          "edit_sequence": "重新设置按键序列"
+          "edit_sequence": "重新设置按键序列",
+          "go_back": "返回"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
           "interval": "每次按下后等待的秒数（最后一次除外）。",
-          "edit_sequence": "打开后将重新选择本集成按键或 button 实体，并为每一项填写重复次数。"
-        }
+          "edit_sequence": "打开后将重新选择本集成按键或按钮实体，并为每一项填写重复次数。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
+        },
+        "submit": "保存"
       },
       "source_seq_kind": {
         "title": "按键类型",
-        "description": "当前序列：{sequence}\n先选择使用本集成按键还是 Button 实体。选完一组后还可以再添加另一种。",
-        "menu_options": {
-          "source_seq_keys": "本集成按键",
-          "source_seq_buttons": "Button 实体"
+        "description": "当前序列：{sequence}\n先选择使用本集成按键还是按钮实体。选完一组后还可以再添加另一种。",
+        "data": {
+          "next": "类型",
+          "go_back": "返回"
+        },
+        "data_description": {
+          "next": "本集成按键或按钮实体。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
         }
       },
       "source_seq_pick": {
         "title": "选择按键",
         "description": "当前类型：{kind}。已有序列：{sequence}\n按发送顺序勾选。下一步会为每一项填写重复次数。",
         "data": {
-          "actions": "可选内容"
+          "actions": "可选内容",
+          "go_back": "返回"
         },
         "data_description": {
-          "actions": "可拖动排序。列表里每项只出现一次，重复次数在下一页填写。"
+          "actions": "可拖动排序。列表里每项只出现一次，重复次数在下一页填写。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
         }
       },
       "source_seq_repeat": {
@@ -139,29 +161,42 @@
           "repeat_17": "{item_17}",
           "repeat_18": "{item_18}",
           "repeat_19": "{item_19}",
-          "add_more": "继续添加另一组"
+          "add_more": "继续添加另一组",
+          "go_back": "返回"
         },
         "data_description": {
-          "add_more": "打开后可以再选本集成按键或 Button 实体，接到当前序列后面。"
-        }
+          "add_more": "打开后可以再选本集成按键或按钮实体，接到当前序列后面。",
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
+        },
+        "submit": "保存"
       },
       "source_delete": {
         "title": "删除输入源",
         "description": "从列表中移除一个输入源。点「保存」后无法撤销。",
         "data": {
-          "name": "输入源"
-        }
+          "name": "输入源",
+          "go_back": "返回"
+        },
+        "data_description": {
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
+        },
+        "submit": "保存"
       },
       "source_reorder": {
         "title": "调整输入源顺序",
         "description": "这里会列出全部输入源。拖动即可调整媒体播放器上的显示顺序。请保留列表中的每一项。",
         "data": {
-          "source_order": "顺序"
-        }
+          "source_order": "顺序",
+          "go_back": "返回"
+        },
+        "data_description": {
+          "go_back": "打开后再点按钮，返回上一页且不保存本页修改。"
+        },
+        "submit": "保存"
       }
     },
     "error": {
-      "buttons_required": "请至少选择一个本机按键或 button 实体。",
+      "buttons_required": "请至少选择一个本机按键或按钮实体。",
       "pick_required": "请至少选择一项当前类型的内容。",
       "unknown_action": "按键序列里有无法识别的键或按钮。",
       "command_required": "请选择或填写红外指令名。",
