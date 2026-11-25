@@ -13,6 +13,8 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -38,9 +40,10 @@ from .ir_codes import (
 )
 from .protocol import KEYS
 from .sources import (
+    KIND_BUTTON,
+    KIND_KEY,
     classify_source_action,
-    encode_source_actions,
-    source_key_tokens,
+    collapse_source_actions,
 )
 
 
@@ -288,45 +291,83 @@ def _with_select_reorder(kwargs: dict[str, Any]) -> SelectSelector:
     return selector
 
 
-def button_sequence_selector(
-    hass: HomeAssistant, *, current: list[str] | None = None
-) -> SelectSelector:
-    """Ordered mix of this integration's T-Cast keys and ``button.*`` entities."""
-    options: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for name in KEYS:
-        label = _tcl_key_label(hass, name)
-        for token in source_key_tokens(name):
-            options.append({"value": token, "label": label})
-            seen.add(token)
-    current_tokens = encode_source_actions(list(current or []))
-    button_ids: list[str] = []
-    for token in [*(current or []), *current_tokens]:
-        classified = classify_source_action(token)
-        if classified and classified[0] == "button":
-            button_ids.append(classified[1])
-    entity_ids: list[str] = []
+def source_kind_label(hass: HomeAssistant, kind: str) -> str:
+    lang = str(getattr(getattr(hass, "config", None), "language", "") or "")
+    chinese = lang.casefold().startswith("zh")
+    if kind == KIND_BUTTON:
+        return "Button 实体" if chinese else "Button entities"
+    return "本集成按键" if chinese else "This TV's keys"
+
+
+def format_action_label(hass: HomeAssistant, action: str) -> str:
+    classified = classify_source_action(action)
+    if classified is None:
+        return action
+    kind, value = classified
+    if kind == KIND_KEY:
+        return _tcl_key_label(hass, value)
     states = getattr(hass, "states", None)
-    if states is not None and hasattr(states, "async_entity_ids"):
-        entity_ids = list(states.async_entity_ids("button"))
-    for entity_id in dict.fromkeys([*button_ids, *entity_ids]):
-        if entity_id in seen:
-            continue
-        state = states.get(entity_id) if states is not None else None
-        options.append(
-            {"value": entity_id, "label": _state_label(state, entity_id)}
-        )
-        seen.add(entity_id)
-    if not options:
-        options = [{"value": "source", "label": _tcl_key_label(hass, "source")}]
+    state = states.get(value) if states is not None else None
+    return _state_label(state, value)
+
+
+def format_source_sequence(hass: HomeAssistant, actions: list[str] | None) -> str:
+    parts: list[str] = []
+    for value, count in collapse_source_actions(actions):
+        label = format_action_label(hass, value)
+        parts.append(f"{label} ×{count}" if count > 1 else label)
+    return " → ".join(parts) if parts else "—"
+
+
+def tcl_key_choice_selector(hass: HomeAssistant) -> SelectSelector:
+    """Each T-Cast key once; order is the press order (repeat counts come next)."""
+    options = [
+        {"value": name, "label": _tcl_key_label(hass, name)} for name in KEYS
+    ]
     return _with_select_reorder(
         {
             "options": options,
             "multiple": True,
-            "custom_value": True,
+            "custom_value": False,
             "sort": False,
         }
     )
+
+
+def button_choice_selector(
+    hass: HomeAssistant, *, current: list[str] | None = None
+) -> EntitySelector | SelectSelector:
+    """Home Assistant ``button.*`` entities (IR remotes, etc.)."""
+    options: list[dict[str, str]] = []
+    states = getattr(hass, "states", None)
+    extra: list[str] = []
+    for token in current or []:
+        classified = classify_source_action(token)
+        if classified and classified[0] == KIND_BUTTON:
+            extra.append(classified[1])
+    entity_ids: list[str] = []
+    if states is not None and hasattr(states, "async_entity_ids"):
+        entity_ids = list(states.async_entity_ids("button"))
+    for entity_id in dict.fromkeys([*extra, *entity_ids]):
+        state = states.get(entity_id) if states is not None else None
+        options.append(
+            {"value": entity_id, "label": _state_label(state, entity_id)}
+        )
+    if options:
+        return _with_select_reorder(
+            {
+                "options": options,
+                "multiple": True,
+                "custom_value": True,
+                "sort": False,
+            }
+        )
+    try:
+        return EntitySelector(
+            EntitySelectorConfig(domain="button", multiple=True)
+        )
+    except (TypeError, ValueError, vol.Invalid):
+        return EntitySelector({"filter": {"domain": "button"}, "multiple": True})
 
 
 def ordered_choice_selector(names: list[str]) -> SelectSelector:

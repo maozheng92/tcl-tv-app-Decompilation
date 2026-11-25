@@ -44,32 +44,46 @@ from .const import (
     DOMAIN,
 )
 from .ir_flow import (
-    button_sequence_selector,
+    button_choice_selector,
+    format_action_label,
+    format_source_sequence,
     ir_codes_filename,
     ir_details_schema,
     ir_remote_requires_device,
     ordered_choice_selector,
     remote_step_schema,
+    source_kind_label,
+    tcl_key_choice_selector,
 )
 from .protocol import TclTvClient, TclTvError, async_probe
 from .sources import (
+    ATTR_ACTIONS,
+    ATTR_ADD_MORE,
     ATTR_BUTTONS,
+    ATTR_EDIT_SEQUENCE,
     ATTR_HIDDEN,
     ATTR_INTERVAL,
     ATTR_NAME,
     DEFAULT_INTERVAL,
+    KIND_BUTTON,
+    KIND_KEY,
     MAX_INTERVAL,
+    SOURCE_REPEAT_MAX,
+    SOURCE_REPEAT_MIN,
     copy_sources,
-    encode_source_actions,
+    counts_for_kind,
+    expand_source_steps,
     find_source_index,
     name_in_use,
     normalize_name,
     parse_button_ids,
     parse_interval,
-    parse_source_actions,
+    parse_repeat,
     saved_options,
+    sequence_kind,
     source_names,
     source_payload,
+    unique_actions_of_kind,
     unknown_source_actions,
 )
 
@@ -134,6 +148,12 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         self._data: dict[str, Any] = {}
         self._edit_index: int | None = None
         self._pending_remote: str | None = None
+        self._source_meta: dict[str, Any] | None = None
+        self._source_original_buttons: list[str] = []
+        self._seq_kind: str | None = None
+        self._seq_picked: list[str] = []
+        self._seq_counts: dict[str, int] = {}
+        self._seq_actions: list[str] = []
 
     def _ensure_draft(self) -> None:
         if self._draft_ready:
@@ -164,11 +184,23 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             "source_names": ", ".join(names) if names else "—",
         }
 
-    def _source_schema(self, source: dict[str, Any] | None) -> vol.Schema:
+    def _reset_source_seq(self) -> None:
+        self._source_meta = None
+        self._source_original_buttons = []
+        self._seq_kind = None
+        self._seq_picked = []
+        self._seq_counts = {}
+        self._seq_actions = []
+
+    def _sequence_preview(self) -> str:
+        actions = self._seq_actions or self._source_original_buttons
+        return format_source_sequence(self.hass, actions)
+
+    def _source_meta_schema(
+        self, source: dict[str, Any] | None, *, editing: bool
+    ) -> vol.Schema:
         name = source[ATTR_NAME] if source else ""
         hidden = bool(source.get(ATTR_HIDDEN)) if source else False
-        buttons = list(source[ATTR_BUTTONS]) if source else []
-        encoded = encode_source_actions(buttons)
         interval = (
             parse_interval(source.get(ATTR_INTERVAL)) if source else DEFAULT_INTERVAL
         )
@@ -179,9 +211,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         else:
             schema[vol.Required(ATTR_NAME)] = name_field
         schema[vol.Required(ATTR_HIDDEN, default=hidden)] = BooleanSelector()
-        schema[vol.Optional(ATTR_BUTTONS, default=encoded)] = button_sequence_selector(
-            self.hass, current=buttons
-        )
         schema[vol.Required(ATTR_INTERVAL, default=interval)] = NumberSelector(
             NumberSelectorConfig(
                 min=0,
@@ -191,7 +220,67 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 unit_of_measurement="s",
             )
         )
+        if editing:
+            schema[vol.Required(ATTR_EDIT_SEQUENCE, default=False)] = BooleanSelector()
         return vol.Schema(schema)
+
+    def _store_source_meta(self, user_input: dict[str, Any]) -> None:
+        self._source_meta = {
+            ATTR_NAME: normalize_name(user_input.get(ATTR_NAME)),
+            ATTR_HIDDEN: bool(user_input.get(ATTR_HIDDEN)),
+            ATTR_INTERVAL: parse_interval(user_input.get(ATTR_INTERVAL)),
+        }
+
+    def _source_meta_errors(self, user_input: dict[str, Any]) -> dict[str, str]:
+        name = normalize_name(user_input.get(ATTR_NAME))
+        errors: dict[str, str] = {}
+        if not name:
+            errors[ATTR_NAME] = "name_required"
+        elif name_in_use(
+            self._data[CONF_SOURCES], name, exclude_index=self._edit_index
+        ):
+            errors[ATTR_NAME] = "name_in_use"
+        return errors
+
+    def _repeat_schema(self) -> vol.Schema:
+        number = NumberSelector(
+            NumberSelectorConfig(
+                min=SOURCE_REPEAT_MIN,
+                max=SOURCE_REPEAT_MAX,
+                step=1,
+                mode=NumberSelectorMode.BOX,
+                unit_of_measurement="×",
+            )
+        )
+        schema: dict[Any, Any] = {}
+        for index, action in enumerate(self._seq_picked):
+            schema[
+                vol.Required(
+                    f"repeat_{index}",
+                    default=int(self._seq_counts.get(action, 1)),
+                )
+            ] = number
+        schema[vol.Required(ATTR_ADD_MORE, default=False)] = BooleanSelector()
+        return vol.Schema(schema)
+
+    def _pick_defaults(self) -> list[str]:
+        if self._seq_picked:
+            return list(self._seq_picked)
+        if self._seq_actions or self._seq_kind is None:
+            return []
+        original = self._source_original_buttons
+        if sequence_kind(original) == self._seq_kind:
+            return unique_actions_of_kind(original, self._seq_kind)
+        return []
+
+    def _count_defaults(self, picked: list[str]) -> dict[str, int]:
+        defaults: dict[str, int] = {}
+        original = self._source_original_buttons
+        if not self._seq_actions and self._seq_kind is not None:
+            if sequence_kind(original) == self._seq_kind:
+                defaults.update(counts_for_kind(original, self._seq_kind))
+        defaults.update(self._seq_counts)
+        return {action: int(defaults.get(action, 1)) for action in picked}
 
     def _source_pick_schema(self) -> vol.Schema:
         names = source_names(self._data[CONF_SOURCES])
@@ -206,42 +295,22 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             }
         )
 
-    async def _commit_source(self, user_input: dict[str, Any]) -> ConfigFlowResult:
-        name = normalize_name(user_input.get(ATTR_NAME))
-        raw_buttons = user_input.get(ATTR_BUTTONS)
-        unknown = unknown_source_actions(raw_buttons)
-        buttons = parse_source_actions(raw_buttons)
-        hidden = bool(user_input.get(ATTR_HIDDEN))
-        interval = parse_interval(user_input.get(ATTR_INTERVAL))
-        errors: dict[str, str] = {}
-        if not name:
-            errors[ATTR_NAME] = "name_required"
-        elif name_in_use(
-            self._data[CONF_SOURCES], name, exclude_index=self._edit_index
-        ):
-            errors[ATTR_NAME] = "name_in_use"
-        if unknown:
-            errors[ATTR_BUTTONS] = "unknown_action"
-        elif not buttons:
-            errors[ATTR_BUTTONS] = "buttons_required"
-        step_id = "source_add" if self._edit_index is None else "source_form"
+    async def _finish_source(self) -> ConfigFlowResult:
+        meta = self._source_meta
+        if not meta or not self._seq_actions:
+            return await self.async_step_source_seq_kind()
         preview = source_payload(
-            name=name or "",
-            hidden=hidden,
-            buttons=buttons,
-            interval=interval,
+            name=str(meta[ATTR_NAME]),
+            hidden=bool(meta[ATTR_HIDDEN]),
+            buttons=list(self._seq_actions),
+            interval=parse_interval(meta[ATTR_INTERVAL]),
         )
-        if errors:
-            return self.async_show_form(
-                step_id=step_id,
-                data_schema=self._source_schema(preview if name or buttons else None),
-                errors=errors,
-            )
         if self._edit_index is None:
             self._data[CONF_SOURCES].append(preview)
         else:
             self._data[CONF_SOURCES][self._edit_index] = preview
         self._edit_index = None
+        self._reset_source_seq()
         return await self.async_step_sources()
 
     async def async_step_init(
@@ -250,6 +319,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         self._ensure_draft()
         self._edit_index = None
         self._pending_remote = None
+        self._reset_source_seq()
         return self.async_show_menu(
             step_id="init",
             menu_options=["power_on", "sources", "save"],
@@ -346,6 +416,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         self._ensure_draft()
         self._edit_index = None
+        self._reset_source_seq()
         menu = ["source_add"]
         if self._data[CONF_SOURCES]:
             menu.extend(["source_edit", "source_delete"])
@@ -368,12 +439,28 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         self._ensure_draft()
         self._edit_index = None
-        if user_input:
-            return await self._commit_source(user_input)
-        return self.async_show_form(
-            step_id="source_add",
-            data_schema=self._source_schema(None),
-        )
+        if user_input is None:
+            self._reset_source_seq()
+            return self.async_show_form(
+                step_id="source_add",
+                data_schema=self._source_meta_schema(None, editing=False),
+            )
+        preview = {
+            ATTR_NAME: normalize_name(user_input.get(ATTR_NAME)),
+            ATTR_HIDDEN: bool(user_input.get(ATTR_HIDDEN)),
+            ATTR_INTERVAL: parse_interval(user_input.get(ATTR_INTERVAL)),
+        }
+        errors = self._source_meta_errors(user_input)
+        if errors:
+            return self.async_show_form(
+                step_id="source_add",
+                data_schema=self._source_meta_schema(preview, editing=False),
+                errors=errors,
+            )
+        self._store_source_meta(user_input)
+        self._seq_actions = []
+        self._source_original_buttons = []
+        return await self.async_step_source_seq_kind()
 
     async def async_step_source_edit(
         self, user_input: dict[str, Any] | None = None
@@ -405,11 +492,130 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         if self._edit_index is None or self._edit_index >= len(sources):
             self._edit_index = None
             return await self.async_step_source_edit()
-        if user_input:
-            return await self._commit_source(user_input)
+        existing = sources[self._edit_index]
+        if user_input is None:
+            self._source_original_buttons = list(existing[ATTR_BUTTONS])
+            return self.async_show_form(
+                step_id="source_form",
+                data_schema=self._source_meta_schema(existing, editing=True),
+                description_placeholders={"sequence": self._sequence_preview()},
+            )
+        preview = {
+            ATTR_NAME: normalize_name(user_input.get(ATTR_NAME)),
+            ATTR_HIDDEN: bool(user_input.get(ATTR_HIDDEN)),
+            ATTR_INTERVAL: parse_interval(user_input.get(ATTR_INTERVAL)),
+            ATTR_BUTTONS: list(existing[ATTR_BUTTONS]),
+        }
+        errors = self._source_meta_errors(user_input)
+        if errors:
+            return self.async_show_form(
+                step_id="source_form",
+                data_schema=self._source_meta_schema(preview, editing=True),
+                errors=errors,
+                description_placeholders={"sequence": self._sequence_preview()},
+            )
+        self._store_source_meta(user_input)
+        self._source_original_buttons = list(existing[ATTR_BUTTONS])
+        if not user_input.get(ATTR_EDIT_SEQUENCE):
+            self._seq_actions = list(existing[ATTR_BUTTONS])
+            return await self._finish_source()
+        self._seq_actions = []
+        return await self.async_step_source_seq_kind()
+
+    async def async_step_source_seq_kind(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._ensure_draft()
+        if not self._source_meta:
+            return await self.async_step_sources()
+        return self.async_show_menu(
+            step_id="source_seq_kind",
+            menu_options=["source_seq_keys", "source_seq_buttons"],
+            description_placeholders={"sequence": self._sequence_preview()},
+        )
+
+    async def async_step_source_seq_keys(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._seq_kind = KIND_KEY
+        return await self.async_step_source_seq_pick()
+
+    async def async_step_source_seq_buttons(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._seq_kind = KIND_BUTTON
+        return await self.async_step_source_seq_pick()
+
+    async def async_step_source_seq_pick(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._ensure_draft()
+        if self._seq_kind not in (KIND_KEY, KIND_BUTTON) or not self._source_meta:
+            return await self.async_step_source_seq_kind()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            raw = user_input.get(ATTR_ACTIONS)
+            unknown = unknown_source_actions(raw)
+            picked = unique_actions_of_kind(raw, self._seq_kind)
+            if unknown:
+                errors[ATTR_ACTIONS] = "unknown_action"
+            elif not picked:
+                errors[ATTR_ACTIONS] = "pick_required"
+            else:
+                self._seq_picked = picked[:SOURCE_REPEAT_MAX]
+                self._seq_counts = self._count_defaults(self._seq_picked)
+                return await self.async_step_source_seq_repeat()
+        defaults = self._pick_defaults()
+        if self._seq_kind == KIND_KEY:
+            selector: Any = tcl_key_choice_selector(self.hass)
+        else:
+            selector = button_choice_selector(self.hass, current=defaults)
         return self.async_show_form(
-            step_id="source_form",
-            data_schema=self._source_schema(sources[self._edit_index]),
+            step_id="source_seq_pick",
+            data_schema=vol.Schema(
+                {vol.Required(ATTR_ACTIONS, default=defaults): selector}
+            ),
+            errors=errors,
+            description_placeholders={
+                "kind": source_kind_label(self.hass, self._seq_kind),
+                "sequence": self._sequence_preview(),
+            },
+        )
+
+    async def async_step_source_seq_repeat(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        self._ensure_draft()
+        if not self._seq_picked or not self._source_meta:
+            return await self.async_step_source_seq_pick()
+        if user_input is not None:
+            steps = [
+                (action, parse_repeat(user_input.get(f"repeat_{index}")))
+                for index, action in enumerate(self._seq_picked)
+            ]
+            self._seq_actions.extend(expand_source_steps(steps))
+            self._seq_picked = []
+            self._seq_counts = {}
+            self._seq_kind = None
+            if user_input.get(ATTR_ADD_MORE):
+                return await self.async_step_source_seq_kind()
+            return await self._finish_source()
+        repeat_help = "\n".join(
+            f"{index + 1}. {format_action_label(self.hass, action)}"
+            for index, action in enumerate(self._seq_picked)
+        )
+        placeholders = {
+            "sequence": format_source_sequence(self.hass, self._seq_actions),
+            "repeat_help": repeat_help,
+        }
+        for index in range(SOURCE_REPEAT_MAX):
+            placeholders[f"item_{index}"] = ""
+        for index, action in enumerate(self._seq_picked):
+            placeholders[f"item_{index}"] = format_action_label(self.hass, action)
+        return self.async_show_form(
+            step_id="source_seq_repeat",
+            data_schema=self._repeat_schema(),
+            description_placeholders=placeholders,
         )
 
     async def async_step_source_delete(

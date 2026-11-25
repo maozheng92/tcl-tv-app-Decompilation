@@ -62,17 +62,15 @@
       },
       "source_add": {
         "title": "添加输入源",
-        "description": "填写名称，并按切换顺序选择本集成的遥控键和/或 button 实体。按键之间留间隔，方便电视菜单跟上。",
+        "description": "先填写名称。下一步选择用本集成按键还是 button 实体，再勾选内容，并为每一项填写重复次数。",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
-          "buttons": "按键序列",
           "interval": "按键间隔"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
         }
       },
@@ -85,18 +83,66 @@
       },
       "source_form": {
         "title": "修改输入源",
-        "description": "修改名称、是否隐藏或按键序列。",
+        "description": "当前按键序列：{sequence}",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
-          "buttons": "按键序列",
-          "interval": "按键间隔"
+          "interval": "按键间隔",
+          "edit_sequence": "重新设置按键序列"
         },
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
-          "interval": "每次按下后等待的秒数（最后一次除外）。"
+          "interval": "每次按下后等待的秒数（最后一次除外）。",
+          "edit_sequence": "打开后将重新选择本集成按键或 button 实体，并为每一项填写重复次数。"
+        }
+      },
+      "source_seq_kind": {
+        "title": "按键类型",
+        "description": "当前序列：{sequence}\n先选择使用本集成按键还是 Button 实体。选完一组后还可以再添加另一种。",
+        "menu_options": {
+          "source_seq_keys": "本集成按键",
+          "source_seq_buttons": "Button 实体"
+        }
+      },
+      "source_seq_pick": {
+        "title": "选择按键",
+        "description": "当前类型：{kind}。已有序列：{sequence}\n按发送顺序勾选。下一步会为每一项填写重复次数。",
+        "data": {
+          "actions": "可选内容"
+        },
+        "data_description": {
+          "actions": "可拖动排序。列表里每项只出现一次，重复次数在下一页填写。"
+        }
+      },
+      "source_seq_repeat": {
+        "title": "重复次数",
+        "description": "已有序列：{sequence}\n{repeat_help}",
+        "data": {
+          "repeat_0": "{item_0}",
+          "repeat_1": "{item_1}",
+          "repeat_2": "{item_2}",
+          "repeat_3": "{item_3}",
+          "repeat_4": "{item_4}",
+          "repeat_5": "{item_5}",
+          "repeat_6": "{item_6}",
+          "repeat_7": "{item_7}",
+          "repeat_8": "{item_8}",
+          "repeat_9": "{item_9}",
+          "repeat_10": "{item_10}",
+          "repeat_11": "{item_11}",
+          "repeat_12": "{item_12}",
+          "repeat_13": "{item_13}",
+          "repeat_14": "{item_14}",
+          "repeat_15": "{item_15}",
+          "repeat_16": "{item_16}",
+          "repeat_17": "{item_17}",
+          "repeat_18": "{item_18}",
+          "repeat_19": "{item_19}",
+          "add_more": "继续添加另一组"
+        },
+        "data_description": {
+          "add_more": "打开后可以再选本集成按键或 Button 实体，接到当前序列后面。"
         }
       },
       "source_delete": {
@@ -116,6 +162,7 @@
     },
     "error": {
       "buttons_required": "请至少选择一个本机按键或 button 实体。",
+      "pick_required": "请至少选择一项当前类型的内容。",
       "unknown_action": "按键序列里有无法识别的键或按钮。",
       "command_required": "请选择或填写红外指令名。",
       "device_required": "此红外遥控需要填写设备名。",
