@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TclTvConfigEntry
 from .entity import TclTvEntity, tv_errors
-from .protocol import KEYS, TvApp, resolve_app_package
+from .protocol import KEYS, PLAYBACK_KEY, TvApp, resolve_app_package
 
 
 async def async_setup_entry(
@@ -48,8 +48,8 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             | MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_STEP
             | MediaPlayerEntityFeature.VOLUME_MUTE
-            # PLAY_PAUSE was removed; HA expects PLAY and/or PAUSE. TCL only has a
-            # single playback toggle key (26), so both features send the same key.
+            # PLAY_PAUSE was removed; HA expects PLAY and/or PAUSE. Both send
+            # MagiConnect TR_KEY_PLAYBACK (26). China T-Cast ignores that integer.
             | MediaPlayerEntityFeature.PLAY
             | MediaPlayerEntityFeature.PAUSE
             | MediaPlayerEntityFeature.PLAY_MEDIA
@@ -130,22 +130,22 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             await self.hub.async_set_mute(mute)
 
     async def async_media_play(self) -> None:
-        await self._send_named_key("playback")
+        await self._send_playback_key()
 
     async def async_media_pause(self) -> None:
-        await self._send_named_key("playback")
+        await self._send_playback_key()
 
     async def async_media_play_pause(self) -> None:
-        await self._send_named_key("playback")
+        await self._send_playback_key()
 
     async def _volume_key(self, key: str) -> None:
         with tv_errors():
             await self.hub.require_client().send_key(KEYS[key])
             await self.hub.async_refresh_volume()
 
-    async def _send_named_key(self, key: str) -> None:
+    async def _send_playback_key(self) -> None:
         with tv_errors():
-            await self.hub.require_client().send_key(KEYS[key])
+            await self.hub.require_client().send_key(PLAYBACK_KEY)
 
     async def async_select_source(self, source: str) -> None:
         names = self.source_list

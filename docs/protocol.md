@@ -122,24 +122,9 @@ TCLPlus **没有**可用的 HDMI 口清单：`TCLRemoteControlProxy` 虽有 Magi
 | `mouseLeftKeyAction` | 39 |
 | `mouseRightKeyAction` | 40 |
 
-`sendKeyAction(int)` 可发任意整数，因此 MagiConnect 中的 EPG/SOURCE/数字键/彩键等对本集成同样可用。**没有独立的 key-up 报文**；长按就是重复 `149`。
+`sendKeyAction(int)` 的形参是任意 `int`，线上仍是 `149>><整数>`。**国行固件只处理 TCL+ 实际发出的那一组**（上表 + 数字 1–9/0=10 + `source`=29）。MagiConnect `IpMessageConst` 里的 RED/GREEN/YELLOW/BLUE（34–37）、INFO（41）、SEARCH（33）、FAVORITE（32）、PICTURE（31）、SCALE（30）、DISPLAY（25）、PLAYBACK（26）、3D（17）、ENTER（68）、DOT（75）、BACKSPACE（38）在国行电视上无效果（实机确认）。APK 里没有另一套彩键/直播 `149` 映射；TCL+ UI 的 `"1"`–`"13"` 也只接到具名方法。**没有独立的 key-up 报文**；长按就是重复 `149`。
 
-### MagiConnect `TR_KEY_*` 整数（本集成 `protocol.KEYS`）
-
-来源：MagiConnect `DEV.IpMessageConst`（ha-tcl-tv 从 MagiConnect 10.2 恢复）+ TCLPlus `TCLRemoteControlProxy` 具名方法。TCLPlus `KeyCodeController.sendCode` 的 UI 字符串 **"1"–"13"** 只映射电源/主页/菜单/音量/频道/返回/OK/四向，**不是** T-Cast 码。
-
-| 名称 | 整数 |
-|---|---:|
-| 数字 1–9 / 0 | 1–9 / 10 |
-| UP DOWN LEFT RIGHT OK BACK | 11–16 |
-| 3D SUBMENU(MAINMENU=home) POWER | 17 / 18 / 19 / 20 |
-| VOL_UP VOL_DOWN MUTE | 21–23 |
-| EPG DISPLAY PLAYBACK | 24–26 |
-| CH_UP CH_DOWN SOURCE | 27–29 |
-| SCALE PICTURE FAVORITE SEARCH | 30–33 |
-| **RED GREEN YELLOW BLUE** | **34–37** |
-| BACKSPACE MOUSELEFT MOUSERIGHT INFOWINDOW | 38–41 |
-| SMARTTV ENTER DOT | 45 / 68 / 75 |
+本集成 `remote.send_command` 只暴露上表 + 数字 + `source`。仍接受 0–999 的原始整数，方便试 Android `KEYCODE_*`（例如 183–186 为 `KEYCODE_PROG_*`），不把未验证的码写成具名键。
 
 ### 直播
 

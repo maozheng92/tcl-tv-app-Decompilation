@@ -116,20 +116,18 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert proto.KEYS["mute"] == 23
     assert proto.KEYS["channel_up"] == 27
     assert proto.KEYS["channel_down"] == 28
-    assert proto.KEYS["playback"] == 26
     assert proto.KEYS["smart_tv"] == 45
-    assert proto.KEYS["red"] == 34
-    assert proto.KEYS["green"] == 35
-    assert proto.KEYS["yellow"] == 36
-    assert proto.KEYS["blue"] == 37
-    assert proto.KEYS["epg"] == 24
-    assert proto.KEYS["guide"] == 24
-    assert proto.resolve_key("红") == 34
-    assert proto.resolve_key("绿") == 35
-    assert proto.resolve_key("黄") == 36
-    assert proto.resolve_key("蓝") == 37
-    assert proto.resolve_key("live") is None
+    assert proto.KEYS["source"] == 29
+    assert proto.KEYS["mouse_left"] == 39
+    assert proto.PLAYBACK_KEY == 26
+    assert "red" not in proto.KEYS
+    assert "playback" not in proto.KEYS
+    assert "enter" not in proto.KEYS
+    assert proto.resolve_key("red") is None
     assert proto.resolve_key("直播") is None
+    assert proto.resolve_key("0") == 10
+    assert proto.resolve_key("183") == 183
+    assert proto.resolve_key("1000") is None
     assert "直播" in proto.LIVE_TV_NAMES
 
 
