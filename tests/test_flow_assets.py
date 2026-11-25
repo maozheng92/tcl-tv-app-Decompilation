@@ -1,4 +1,4 @@
-"""Sanity checks for options-flow copy and the footer script."""
+"""Sanity checks for options-flow copy and Back on secondary screens."""
 
 from __future__ import annotations
 
@@ -7,6 +7,17 @@ import unittest
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "tcl_tv"
+_FORM_STEPS = (
+    "power_on",
+    "ir_details",
+    "source_add",
+    "source_edit",
+    "source_form",
+    "source_seq_pick",
+    "source_seq_repeat",
+    "source_delete",
+    "source_reorder",
+)
 
 
 class FlowAssetTests(unittest.TestCase):
@@ -19,35 +30,24 @@ class FlowAssetTests(unittest.TestCase):
         kind = zh["options"]["step"]["source_seq_kind"]["menu_options"]
         self.assertEqual(kind["source_seq_buttons"], "按钮实体")
         self.assertEqual(kind["source_seq_kind_back"], "返回")
-        for step_id in (
-            "source_form",
-            "source_seq_repeat",
-            "source_delete",
-            "source_reorder",
-        ):
-            self.assertEqual(zh["options"]["step"][step_id]["submit"], "提交")
+        self.assertEqual(
+            zh["options"]["step"]["sources"]["menu_options"]["sources_done"], "返回"
+        )
+        self.assertNotIn("go_back", zh["options"]["step"]["init"].get("data", {}))
+        self.assertNotIn("go_back", zh["options"]["step"]["init"].get("menu_options", {}))
+        for step_id in _FORM_STEPS:
+            self.assertEqual(zh["options"]["step"][step_id]["data"]["go_back"], "返回上一界面")
 
-    def test_footer_script_hides_duplicate_menu_rows(self) -> None:
-        script = (_ROOT / "www" / "tcl_tv_flow.js").read_text(encoding="utf-8")
-        self.assertIn('init: ["save"]', script)
-        self.assertIn('sources: ["save", "sources_done"]', script)
-        self.assertIn("source_seq_kind_back", script)
-        self.assertIn("go_back: true", script)
-        self.assertIn('next_step_id: "save"', script)
-        self.assertIn("dialog-data-entry-flow", script)
-        self.assertIn("deepQuery(document, DIALOG_SEL)", script)
+    def test_no_footer_script(self) -> None:
+        self.assertFalse((_ROOT / "www" / "tcl_tv_flow.js").exists())
+        self.assertFalse((_ROOT / "flow_ui.py").exists())
 
-    def test_flow_ui_loads_classic_and_module_script(self) -> None:
-        flow_ui = (_ROOT / "flow_ui.py").read_text(encoding="utf-8")
-        self.assertIn("es5=True", flow_ui)
-
-    def test_strings_and_en_have_save_submit(self) -> None:
+    def test_strings_and_en_have_back(self) -> None:
         for name in ("strings.json", "translations/en.json"):
             data = json.loads((_ROOT / name).read_text())
             step = data["options"]["step"]
-            self.assertEqual(step["source_form"]["submit"], "Submit")
-            self.assertEqual(step["source_seq_repeat"]["submit"], "Submit")
-            self.assertEqual(step["source_delete"]["submit"], "Submit")
-            self.assertEqual(step["source_reorder"]["submit"], "Submit")
-            self.assertEqual(step["sources"]["menu_options"]["save"], "Save")
-            self.assertIn("source_seq_kind_back", step["source_seq_kind"]["menu_options"])
+            self.assertEqual(step["sources"]["menu_options"]["sources_done"], "Back")
+            self.assertEqual(step["source_seq_kind"]["menu_options"]["source_seq_kind_back"], "Back")
+            self.assertEqual(step["source_seq_kind"]["menu_options"]["source_seq_buttons"], "Button entities")
+            for step_id in _FORM_STEPS:
+                self.assertEqual(step[step_id]["data"]["go_back"], "Go back")
