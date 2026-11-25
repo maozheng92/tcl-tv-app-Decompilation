@@ -25,20 +25,29 @@ class FlowAssetTests(unittest.TestCase):
             "source_delete",
             "source_reorder",
         ):
-            self.assertNotIn("submit", zh["options"]["step"][step_id])
+            self.assertEqual(zh["options"]["step"][step_id]["submit"], "提交")
 
     def test_footer_script_hides_duplicate_menu_rows(self) -> None:
         script = (_ROOT / "www" / "tcl_tv_flow.js").read_text(encoding="utf-8")
         self.assertIn('init: ["save"]', script)
         self.assertIn('sources: ["save", "sources_done"]', script)
         self.assertIn("source_seq_kind_back", script)
-        self.assertIn('go_back: true', script)
+        self.assertIn("go_back: true", script)
         self.assertIn('next_step_id: "save"', script)
+        self.assertIn("dialog-data-entry-flow", script)
+        self.assertIn("deepQuery(document, DIALOG_SEL)", script)
+
+    def test_flow_ui_loads_classic_and_module_script(self) -> None:
+        flow_ui = (_ROOT / "flow_ui.py").read_text(encoding="utf-8")
+        self.assertIn("es5=True", flow_ui)
 
     def test_strings_and_en_have_save_submit(self) -> None:
         for name in ("strings.json", "translations/en.json"):
             data = json.loads((_ROOT / name).read_text())
             step = data["options"]["step"]
-            self.assertNotIn("submit", step["source_form"])
+            self.assertEqual(step["source_form"]["submit"], "Submit")
+            self.assertEqual(step["source_seq_repeat"]["submit"], "Submit")
+            self.assertEqual(step["source_delete"]["submit"], "Submit")
+            self.assertEqual(step["source_reorder"]["submit"], "Submit")
             self.assertEqual(step["sources"]["menu_options"]["save"], "Save")
             self.assertIn("source_seq_kind_back", step["source_seq_kind"]["menu_options"])
