@@ -5,6 +5,7 @@ import asyncio
 from collections.abc import Callable
 import logging
 
+from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.components.remote import DOMAIN as REMOTE_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_ENTITY_ID
@@ -19,10 +20,19 @@ from .const import (
     CONF_POWER_ON_COMMAND,
     CONF_POWER_ON_DEVICE,
     CONF_POWER_ON_REMOTE,
+    CONF_SOURCES,
     RECONNECT_INTERVAL,
     VOLUME_POLL_INTERVAL,
 )
 from .protocol import TclTvClient, TclTvError, TvApp, TvInfo, async_wake
+from .sources import (
+    ATTR_BUTTONS,
+    ATTR_INTERVAL,
+    ATTR_NAME,
+    copy_sources,
+    find_source_index,
+    visible_source_names,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +57,7 @@ class TclTvHub:
         self.volume: int | None = None
         self.muted: bool | None = None
         self.apps: list[TvApp] = []
+        self.selected_source: str | None = None
         self.probed = False
         self._stopping = False
         self._listeners: list[CALLBACK_TYPE] = []
@@ -70,6 +81,14 @@ class TclTvHub:
     def power_on_device(self) -> str | None:
         device = self.entry.options.get(CONF_POWER_ON_DEVICE)
         return device if isinstance(device, str) and device else None
+
+    @property
+    def sources(self) -> list[dict]:
+        return copy_sources(self.entry.options.get(CONF_SOURCES))
+
+    @property
+    def visible_source_names(self) -> list[str]:
+        return visible_source_names(self.sources)
 
     @callback
     def async_add_listener(self, update: CALLBACK_TYPE) -> Callable[[], None]:
@@ -197,6 +216,31 @@ class TclTvHub:
                 "No IR power-on remote configured and no MAC for Wake-on-LAN"
             )
         self._retry_now.set()
+
+    async def async_press_source_buttons(self, name: str) -> None:
+        """Press the configured button sequence for one named input source."""
+        sources = self.sources
+        index = find_source_index(sources, name)
+        if index is None:
+            raise HomeAssistantError(f"Unknown input source {name!r}")
+        source = sources[index]
+        buttons = list(source[ATTR_BUTTONS])
+        interval = float(source[ATTR_INTERVAL])
+        for step, entity_id in enumerate(buttons):
+            if self.hass.states.get(entity_id) is None:
+                raise HomeAssistantError(
+                    f"Source button {entity_id} is missing; edit the source in TCL TV options"
+                )
+            await self.hass.services.async_call(
+                BUTTON_DOMAIN,
+                "press",
+                {CONF_ENTITY_ID: entity_id},
+                blocking=True,
+            )
+            if step < len(buttons) - 1 and interval > 0:
+                await asyncio.sleep(interval)
+        self.selected_source = str(source[ATTR_NAME])
+        self._notify()
 
     async def async_turn_off(self) -> None:
         if self.connected:

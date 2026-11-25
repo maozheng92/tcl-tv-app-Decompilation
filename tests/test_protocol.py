@@ -68,6 +68,18 @@ def test_parse_apps_splits_records_and_system_flag() -> None:
     assert apps[1].system is True
 
 
+def test_resolve_app_package_prefers_exact_then_unique_substring() -> None:
+    apps = proto.parse_apps(
+        "223>>GET>>com.example.player::云视听小电视::::1::1.0::0::0::100::1"
+        ">com.tcl.settings::Settings::::1::1.0::0::0::1::0"
+    )
+    assert proto.resolve_app_package(apps, "com.example.player") == "com.example.player"
+    assert proto.resolve_app_package(apps, "云视听小电视") == "com.example.player"
+    assert proto.resolve_app_package(apps, "settings") == "com.tcl.settings"
+    assert proto.resolve_app_package(apps, "com.") is None
+    assert proto.resolve_app_package(apps, "") is None
+
+
 def test_parse_handshake_algorithm_and_mac() -> None:
     text = (
         "159>>75Q9M Pro>>600505013:5.1.2.1>>V8-LF1>>1>>AA:BB:CC:DD:EE:FF>>1"
