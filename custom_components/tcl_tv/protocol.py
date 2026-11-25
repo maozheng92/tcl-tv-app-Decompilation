@@ -52,8 +52,11 @@ _MAX_FRAME = 1 << 20
 HEARTBEAT_IDLE = 5.0
 SILENCE_TIMEOUT = 20.0
 
-# Key codes sent as ``149>><code>``. Named helpers in TCLPlus
-# TCLRemoteControlProxy; remaining values are the tcastsdk TR_KEY set.
+# Key codes sent as ``149>><code>``. TCLPlus only has named helpers for a
+# subset (dirs/OK/back/menu/home/power/vol/ch/mouse). The rest are MagiConnect
+# ``IpMessageConst.TR_KEY_*`` integers accepted by ``sendKeyAction(int)``.
+# Color keys RED/GREEN/YELLOW/BLUE are 34–37. There is no TR_KEY_TV integer
+# in TCLPlus 5.1.2.1 or MagiConnect's recovered table (直播 is not a 149 key).
 KEYS: dict[str, int] = {
     "1": 1,
     "2": 2,
@@ -79,6 +82,7 @@ KEYS: dict[str, int] = {
     "volume_down": 22,
     "mute": 23,
     "epg": 24,
+    "guide": 24,
     "display": 25,
     "playback": 26,
     "channel_up": 27,
@@ -100,6 +104,28 @@ KEYS: dict[str, int] = {
     "enter": 68,
     "dot": 75,
 }
+
+# Chinese color names from the physical remote; same 149 integers as above.
+KEY_ALIASES: dict[str, str] = {
+    "红": "red",
+    "绿": "green",
+    "黄": "yellow",
+    "蓝": "blue",
+}
+
+# Names users may try for live TV. TCLPlus H5 remotekey "0" is GOTVAPP
+# (opens MagiConnect on the phone), not a TV 149 key.
+LIVE_TV_NAMES = frozenset({"live", "tv", "live_tv", "直播"})
+
+
+def resolve_key(name: str) -> int | None:
+    """Map a ``remote.send_command`` name to a T-Cast 149 integer."""
+    if name in KEYS:
+        return KEYS[name]
+    canonical = KEY_ALIASES.get(name)
+    if canonical is None:
+        return None
+    return KEYS[canonical]
 
 
 class TclTvError(Exception):

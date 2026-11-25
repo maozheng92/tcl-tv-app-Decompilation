@@ -9,7 +9,7 @@
 | 实体 | 能力 |
 |---|---|
 | `media_player.<电视>` | 开/关（开=可选红外遥控或 WOL，关=电源切换键）、音量读/写/加减、静音、播放/暂停键、`select_source` 切换**自定义输入源**、媒体浏览器 / `play_media` **启动已安装应用** |
-| `remote.<电视>` | `remote.send_command` 发送方向键、OK、返回、主页、菜单、数字、信号源等 |
+| `remote.<电视>` | `remote.send_command` 发送方向键、OK、返回、主页、菜单、数字、信号源、彩键（红/绿/黄/蓝）等 |
 
 开机键：在集成条目的 **配置 / Configure** 里选择红外 `remote.*`（Broadlink / Harmony Hub / 小米万能遥控），再从该遥控已学习的码库中**下拉选择**设备与开机指令（实现参考 [ir_television](https://github.com/maozheng92/ir_television)）。设置后，`turn_on` 会调用 `remote.send_command`；遥控留空则仍发 Wake-on-LAN。
 
@@ -71,10 +71,39 @@ action: remote.send_command
 target:
   entity_id: remote.living_room
 data:
-  command: back
+  command:
+    - red
 ```
 
-`remote.send_command` 可用键名：`up` `down` `left` `right` `ok` `back` `home` `menu` `power` `volume_up` `volume_down` `mute` `source` `playback` `channel_up` `channel_down` `0`–`9` 等（完整表见 `protocol.KEYS`）。
+彩键也可用中文名：`红` `绿` `黄` `蓝`。
+
+`remote.send_command` 可用键名（T-Cast `149>><整数>`，与 MagiConnect `TR_KEY_*` 相同）。TCL+ 手机遥控界面只画了电源/主页/菜单/音量/频道/返回/OK/方向；彩键和 EPG 等仍可通过 `sendKeyAction(int)` 发出。
+
+| 键名 | 码 | 说明 |
+|---|---:|---|
+| `0`–`9` | 10, 1–9 | 数字 0 是码 10 |
+| `up` `down` `left` `right` `ok` `back` | 11–16 | 方向与确认 |
+| `menu` `home` `power` | 18–20 | 主页在 Linux TV 能力位下也可能是 `smart_tv`（45） |
+| `volume_up` `volume_down` `mute` | 21–23 | |
+| `epg` / `guide` | 24 | 节目指南 |
+| `channel_up` `channel_down` `source` | 27–29 | |
+| `red` `green` `yellow` `blue` | 34–37 | 彩键，中文别名 `红` `绿` `黄` `蓝` |
+| `info` `search` `favorite` `picture` `scale` `display` `playback` `3d` | 41, 33, 32, 31, 30, 25, 26, 17 | MagiConnect 表中有、TCL+ UI 未画出的键 |
+| `enter` `dot` `backspace` | 68, 75, 38 | |
+| `mouse_left` `mouse_right` | 39–40 | |
+
+**直播不是 T-Cast 按键。** TCLPlus 5.1.2.1 的 H5 `remotekey=0`（`REMOTE_KEY_GOTVAPP`）会在手机上打开 MagiConnect（`com.tnscreen.main`），不会向电视发 `149`。MagiConnect 恢复出的整数表也没有 `TR_KEY_TV`。要进直播，用媒体浏览器 / `play_media` 打开电视上的直播应用：
+
+```yaml
+action: media_player.play_media
+target:
+  entity_id: media_player.living_room
+data:
+  media_content_type: app
+  media_content_id: 直播
+```
+
+`media_content_id` 填应用名称或包名（与电视 `223>>GET` 列表匹配）。完整键表见 `protocol.KEYS`。
 
 ## 开发
 

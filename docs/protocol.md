@@ -122,7 +122,33 @@ TCLPlus **没有**可用的 HDMI 口清单：`TCLRemoteControlProxy` 虽有 Magi
 | `mouseLeftKeyAction` | 39 |
 | `mouseRightKeyAction` | 40 |
 
-`sendKeyAction(int)` 可发任意整数，因此 MagiConnect 中的 EPG/SOURCE/数字键等对本集成同样可用。**没有独立的 key-up 报文**；长按就是重复 `149`。
+`sendKeyAction(int)` 可发任意整数，因此 MagiConnect 中的 EPG/SOURCE/数字键/彩键等对本集成同样可用。**没有独立的 key-up 报文**；长按就是重复 `149`。
+
+### MagiConnect `TR_KEY_*` 整数（本集成 `protocol.KEYS`）
+
+来源：MagiConnect `DEV.IpMessageConst`（ha-tcl-tv 从 MagiConnect 10.2 恢复）+ TCLPlus `TCLRemoteControlProxy` 具名方法。TCLPlus `KeyCodeController.sendCode` 的 UI 字符串 **"1"–"13"** 只映射电源/主页/菜单/音量/频道/返回/OK/四向，**不是** T-Cast 码。
+
+| 名称 | 整数 |
+|---|---:|
+| 数字 1–9 / 0 | 1–9 / 10 |
+| UP DOWN LEFT RIGHT OK BACK | 11–16 |
+| 3D SUBMENU(MAINMENU=home) POWER | 17 / 18 / 19 / 20 |
+| VOL_UP VOL_DOWN MUTE | 21–23 |
+| EPG DISPLAY PLAYBACK | 24–26 |
+| CH_UP CH_DOWN SOURCE | 27–29 |
+| SCALE PICTURE FAVORITE SEARCH | 30–33 |
+| **RED GREEN YELLOW BLUE** | **34–37** |
+| BACKSPACE MOUSELEFT MOUSERIGHT INFOWINDOW | 38–41 |
+| SMARTTV ENTER DOT | 45 / 68 / 75 |
+
+### 直播
+
+TCLPlus **没有** 直播的 `149` 整数。
+
+- H5 `operateTVFromH5` 的 `remotekey="0"` 日志为 `REMOTE_KEY_GOTVAPP`，走的是手机 Intent `tclapp://TCL_TV.app/openwith?type=100` / 包名 `com.tnscreen.main`，不是电视按键。
+- `TCLChannelProxy.startTChannel` 发的是 **`251>><url>`**（T 频道内容），不是遥控器「直播」键。
+- 旧 nScreen XML（TCP 4123，`TR_KEY_TV` 字符串）与本 T-Cast 整数协议不是同一条路；MagiConnect 整数表里没有 TV/TUNER/LIST。
+- 本集成不猜测 `149` 码。进直播用 `223>>OPEN`（`play_media` type `app`）。
 
 电源键 20 是**切换**，不是幂等关机。TCLPlus 的 `awaken()` 在此版本是空实现；WOL 魔法包（广播 `255.255.255.255:7778`，6×`FF` + MAC×16）来自旧 MagiConnect SDK，本集成仍发送，是否唤醒取决于电视网卡/待机设置。
 
