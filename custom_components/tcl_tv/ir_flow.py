@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import voluptuous as vol
+
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.selector import (
     EntitySelector,
@@ -227,38 +229,32 @@ def remote_dropdown(
 
 def button_sequence_selector(
     hass: HomeAssistant, *, current: list[str] | None = None
-) -> SelectSelector | EntitySelector:
-    """Ordered multi-select of ``button.*`` entities (Source → Right → OK)."""
-    current_ids = [item for item in (current or []) if isinstance(item, str) and item]
-    entity_ids = list(hass.states.async_entity_ids("button"))
-    options: list[dict[str, str]] = []
-    seen: set[str] = set()
-    for entity_id in [*current_ids, *entity_ids]:
-        if entity_id in seen:
-            continue
-        seen.add(entity_id)
-        options.append(
-            {
-                "value": entity_id,
-                "label": _state_label(hass.states.get(entity_id), entity_id),
-            }
-        )
-    if not options:
-        return EntitySelector(EntitySelectorConfig(domain="button", multiple=True))
-    kwargs: dict[str, Any] = {
-        "options": options,
-        "multiple": True,
-        "custom_value": False,
-        "mode": SelectSelectorMode.LIST,
-        "sort": False,
-    }
+) -> EntitySelector:
+    """Multi-select of ``button.*`` entities (Source → Right → OK).
+
+    Use the entity picker, not a select list. ``SelectSelector`` has no
+    ``reorder`` key; passing it raises ``vol.Invalid`` and the companion
+    app shows a blank Error screen.
+    """
+    _ = (hass, current)
+    config: EntitySelectorConfig = {"domain": "button", "multiple": True}
     try:
-        return SelectSelector(SelectSelectorConfig(**kwargs, reorder=True))
-    except TypeError:
-        try:
-            return SelectSelector(SelectSelectorConfig(**kwargs))
-        except TypeError:
-            return EntitySelector(EntitySelectorConfig(domain="button", multiple=True))
+        return EntitySelector({**config, "reorder": True})
+    except (TypeError, ValueError, vol.Invalid):
+        return EntitySelector(config)
+
+
+def ordered_choice_selector(names: list[str]) -> SelectSelector:
+    """Multi-select of names. SelectSelector does not accept ``reorder``."""
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=names,
+            multiple=True,
+            custom_value=False,
+            mode=SelectSelectorMode.DROPDOWN,
+            sort=False,
+        )
+    )
 
 
 def _name_dropdown(names: list[str], *, current: str = "") -> SelectSelector:

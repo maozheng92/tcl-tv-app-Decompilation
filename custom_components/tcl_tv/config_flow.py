@@ -48,6 +48,7 @@ from .ir_flow import (
     ir_codes_filename,
     ir_details_schema,
     ir_remote_requires_device,
+    ordered_choice_selector,
     remote_step_schema,
 )
 from .protocol import TclTvClient, TclTvError, async_probe
@@ -174,7 +175,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         else:
             schema[vol.Required(ATTR_NAME)] = name_field
         schema[vol.Required(ATTR_HIDDEN, default=hidden)] = BooleanSelector()
-        schema[vol.Required(ATTR_BUTTONS, default=buttons)] = button_sequence_selector(
+        schema[vol.Optional(ATTR_BUTTONS, default=buttons)] = button_sequence_selector(
             self.hass, current=buttons
         )
         schema[vol.Required(ATTR_INTERVAL, default=interval)] = NumberSelector(
@@ -359,7 +360,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         self._ensure_draft()
         self._edit_index = None
-        if user_input is not None:
+        if user_input:
             return await self._commit_source(user_input)
         return self.async_show_form(
             step_id="source_add",
@@ -396,7 +397,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         if self._edit_index is None or self._edit_index >= len(sources):
             self._edit_index = None
             return await self.async_step_source_edit()
-        if user_input is not None:
+        if user_input:
             return await self._commit_source(user_input)
         return self.async_show_form(
             step_id="source_form",
@@ -443,24 +444,13 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                     rebuilt.append(item)
             self._data[CONF_SOURCES] = rebuilt
             return await self.async_step_sources()
-        order_selector: Any
-        kwargs: dict[str, Any] = {
-            "options": names,
-            "multiple": True,
-            "mode": SelectSelectorMode.LIST,
-            "sort": False,
-        }
-        try:
-            order_selector = SelectSelector(
-                SelectSelectorConfig(**kwargs, reorder=True)
-            )
-        except TypeError:
-            order_selector = SelectSelector(SelectSelectorConfig(**kwargs))
         return self.async_show_form(
             step_id="source_reorder",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_SOURCE_ORDER, default=names): order_selector,
+                    vol.Required(
+                        CONF_SOURCE_ORDER, default=names
+                    ): ordered_choice_selector(names),
                 }
             ),
         )
