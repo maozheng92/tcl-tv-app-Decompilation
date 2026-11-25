@@ -97,7 +97,9 @@ TCLPlus 遥控代理发出的按键都是 `149>><code>`（`a.a.D`，常量 `NEED
 | C→T | `223>>OPEN>><package>` | `AppManagerProxy.openApp` | 启动应用 |
 | both | `159>>...` | `a.a.n` / `ProtocolHandlerV6` | 握手 |
 
-应用列表记录：`package::name::icon[::versionCode::versionName::cache::data::code[::systemFlag]]`，应用之间用单个 `>` 分隔；`systemFlag=0` 为系统应用。
+应用列表记录：`package::name::icon[::versionCode::versionName::cache::data::code[::systemFlag]]`，应用之间用单个 `>` 分隔；`systemFlag=0` 为系统应用。本集成把应用放在媒体浏览器 / `play_media`（`app`），**不**放进 `source_list`。
+
+TCLPlus **没有**可用的 HDMI 口清单：`TCLRemoteControlProxy` 虽有 MagiConnect 风格的「最近输入」报文（`269>>1` / `269>>2>>token`），APK 并不调用，回复也不是稳定的 HDMI1/HDMI2 名称。输入源改为用户在集成选项里手动配置，并用 `button.*` 序列切换。
 
 ## 按键（TCLPlus 具名方法）
 

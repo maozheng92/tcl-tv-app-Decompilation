@@ -226,6 +226,28 @@ def parse_apps(reply: str) -> list[TvApp]:
     return apps
 
 
+def resolve_app_package(apps: list[TvApp], media_id: str) -> str | None:
+    """Match play_media id to a package: exact package, exact name, then unique substring."""
+    wanted = media_id.strip() if isinstance(media_id, str) else ""
+    if not wanted:
+        return None
+    for app in apps:
+        if app.package == wanted:
+            return app.package
+    lowered = wanted.casefold()
+    for app in apps:
+        if app.name.casefold() == lowered:
+            return app.package
+    matches = [
+        app
+        for app in apps
+        if lowered in app.name.casefold() or lowered in app.package.casefold()
+    ]
+    if len(matches) == 1:
+        return matches[0].package
+    return None
+
+
 def parse_handshake(text: str) -> TvInfo:
     """Parse a ``159>>...`` handshake reply."""
     fields = text.split(_SEP)

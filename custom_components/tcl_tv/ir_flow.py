@@ -11,6 +11,8 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -221,6 +223,42 @@ def remote_dropdown(
             sort=False,
         )
     )
+
+
+def button_sequence_selector(
+    hass: HomeAssistant, *, current: list[str] | None = None
+) -> SelectSelector | EntitySelector:
+    """Ordered multi-select of ``button.*`` entities (Source → Right → OK)."""
+    current_ids = [item for item in (current or []) if isinstance(item, str) and item]
+    entity_ids = list(hass.states.async_entity_ids("button"))
+    options: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for entity_id in [*current_ids, *entity_ids]:
+        if entity_id in seen:
+            continue
+        seen.add(entity_id)
+        options.append(
+            {
+                "value": entity_id,
+                "label": _state_label(hass.states.get(entity_id), entity_id),
+            }
+        )
+    if not options:
+        return EntitySelector(EntitySelectorConfig(domain="button", multiple=True))
+    kwargs: dict[str, Any] = {
+        "options": options,
+        "multiple": True,
+        "custom_value": False,
+        "mode": SelectSelectorMode.LIST,
+        "sort": False,
+    }
+    try:
+        return SelectSelector(SelectSelectorConfig(**kwargs, reorder=True))
+    except TypeError:
+        try:
+            return SelectSelector(SelectSelectorConfig(**kwargs))
+        except TypeError:
+            return EntitySelector(EntitySelectorConfig(domain="button", multiple=True))
 
 
 def _name_dropdown(names: list[str], *, current: str = "") -> SelectSelector:

@@ -1,21 +1,25 @@
-"""TV as a media_player: power, volume, mute, playback key and app launching."""
+"""TV as a media_player: power, volume, mute, HDMI sources, and apps."""
 from __future__ import annotations
 
 from typing import Any
 
 from homeassistant.components.media_player import (
+    BrowseMedia,
+    MediaClass,
     MediaPlayerDeviceClass,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
+    MediaType,
 )
+from homeassistant.components.media_player.errors import BrowseError
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TclTvConfigEntry
 from .entity import TclTvEntity, tv_errors
-from .protocol import KEYS
+from .protocol import KEYS, TvApp, resolve_app_package
 
 
 async def async_setup_entry(
@@ -27,22 +31,33 @@ async def async_setup_entry(
 
 
 class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
-    """Power state is "the control session is up"; there is no other signal."""
+    """Power state is "the control session is up"; there is no other signal.
+
+    Input sources are user-defined HDMI / AV names. Installed apps live in
+    Media Browser (and ``play_media`` with type ``app``), matching Sony Bravia.
+    """
 
     _attr_name = None
     _attr_device_class = MediaPlayerDeviceClass.TV
-    _attr_supported_features = (
-        MediaPlayerEntityFeature.TURN_ON
-        | MediaPlayerEntityFeature.TURN_OFF
-        | MediaPlayerEntityFeature.VOLUME_SET
-        | MediaPlayerEntityFeature.VOLUME_STEP
-        | MediaPlayerEntityFeature.VOLUME_MUTE
-        # PLAY_PAUSE was removed; HA expects PLAY and/or PAUSE. TCL only has a
-        # single playback toggle key (26), so both features send the same key.
-        | MediaPlayerEntityFeature.PLAY
-        | MediaPlayerEntityFeature.PAUSE
-        | MediaPlayerEntityFeature.SELECT_SOURCE
-    )
+
+    @property
+    def supported_features(self) -> MediaPlayerEntityFeature:
+        features = (
+            MediaPlayerEntityFeature.TURN_ON
+            | MediaPlayerEntityFeature.TURN_OFF
+            | MediaPlayerEntityFeature.VOLUME_SET
+            | MediaPlayerEntityFeature.VOLUME_STEP
+            | MediaPlayerEntityFeature.VOLUME_MUTE
+            # PLAY_PAUSE was removed; HA expects PLAY and/or PAUSE. TCL only has a
+            # single playback toggle key (26), so both features send the same key.
+            | MediaPlayerEntityFeature.PLAY
+            | MediaPlayerEntityFeature.PAUSE
+            | MediaPlayerEntityFeature.PLAY_MEDIA
+            | MediaPlayerEntityFeature.BROWSE_MEDIA
+        )
+        if self.source_list:
+            features |= MediaPlayerEntityFeature.SELECT_SOURCE
+        return features
 
     @property
     def state(self) -> MediaPlayerState | None:
@@ -63,8 +78,15 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
         return self.hub.muted
 
     @property
+    def source(self) -> str | None:
+        selected = self.hub.selected_source
+        if selected in self.source_list:
+            return selected
+        return None
+
+    @property
     def source_list(self) -> list[str]:
-        return [app.name for app in self.hub.apps]
+        return self.hub.visible_source_names
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -126,12 +148,59 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             await self.hub.require_client().send_key(KEYS[key])
 
     async def async_select_source(self, source: str) -> None:
-        package = next(
-            (app.package for app in self.hub.apps if app.name == source), None
-        )
+        names = self.source_list
+        if source not in names:
+            raise ServiceValidationError(
+                f"Unknown source {source!r}; choose one of: {', '.join(names) or '(none)'}"
+            )
+        await self.hub.async_press_source_buttons(source)
+
+    async def async_play_media(
+        self, media_type: str, media_id: str, **kwargs: Any
+    ) -> None:
+        if media_type not in (MediaType.APP, "app", MediaType.APPS, "apps"):
+            raise ServiceValidationError(
+                f"Unsupported media type {media_type!r}; use app"
+            )
+        package = resolve_app_package(self.hub.apps, media_id)
         if package is None:
             raise ServiceValidationError(
-                f"Unknown app {source!r}; choose one of: {', '.join(self.source_list)}"
+                f"Unknown app {media_id!r}; browse Applications on this media player"
             )
         with tv_errors():
             await self.hub.require_client().launch_app(package)
+
+    async def async_browse_media(
+        self,
+        media_content_type: str | None = None,
+        media_content_id: str | None = None,
+    ) -> BrowseMedia:
+        if (
+            (media_content_type is None and media_content_id is None)
+            or media_content_id in ("", "apps")
+            or media_content_type in (MediaType.APPS, "apps")
+        ):
+            return BrowseMedia(
+                title="Applications",
+                media_class=MediaClass.APP,
+                media_content_id="apps",
+                media_content_type=MediaType.APPS,
+                can_play=False,
+                can_expand=True,
+                children=[_app_item(app) for app in self.hub.apps],
+                children_media_class=MediaClass.APP,
+            )
+        raise BrowseError("Media not found")
+
+
+def _app_item(app: TvApp) -> BrowseMedia:
+    thumbnail = app.icon if app.icon.startswith("http") else None
+    return BrowseMedia(
+        title=app.name,
+        media_class=MediaClass.APP,
+        media_content_id=app.package,
+        media_content_type=MediaType.APP,
+        can_play=True,
+        can_expand=False,
+        thumbnail=thumbnail,
+    )

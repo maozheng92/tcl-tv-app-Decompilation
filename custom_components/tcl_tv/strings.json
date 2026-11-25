@@ -19,6 +19,15 @@
   "options": {
     "step": {
       "init": {
+        "title": "TCL TV options",
+        "description": "IR power-on: {power_on}\nInput sources: {source_count}. Changes apply only after Save.",
+        "menu_options": {
+          "power_on": "IR power-on",
+          "sources": "Input sources",
+          "save": "Save"
+        }
+      },
+      "power_on": {
         "title": "IR power-on remote",
         "description": "Pick an infrared remote (Broadlink, Harmony Hub, or Xiaomi Home). Leave empty to keep using Wake-on-LAN.",
         "data": {
@@ -39,12 +48,80 @@
           "power_on_device": "Device name from the remote's learned codes. Required for Harmony Hub and Xiaomi Home.",
           "power_on_command": "Command name from that device (for example Power or power_on)."
         }
+      },
+      "sources": {
+        "title": "Input sources",
+        "description": "Named HDMI/AV inputs with a button sequence (for example Source → Right → OK). Hidden sources stay in this list but not on the media player. Current: {source_names}",
+        "menu_options": {
+          "source_add": "Add source",
+          "source_edit": "Edit source",
+          "source_delete": "Delete source",
+          "source_reorder": "Reorder sources",
+          "sources_done": "Back"
+        }
+      },
+      "source_add": {
+        "title": "Add input source",
+        "description": "Name the input and the button entities to press in order. Pause between presses so the TV menu can catch up.",
+        "data": {
+          "name": "Name",
+          "hidden": "Hide from source list",
+          "buttons": "Button sequence",
+          "interval": "Pause between buttons"
+        },
+        "data_description": {
+          "name": "Shown on media_player.select_source (for example HDMI 1).",
+          "hidden": "Keep the source configured but omit it from the TV source list.",
+          "buttons": "Press order, for example Source, Right, OK.",
+          "interval": "Seconds to wait after each press except the last."
+        }
+      },
+      "source_edit": {
+        "title": "Edit input source",
+        "description": "Pick the source to change.",
+        "data": {
+          "name": "Source"
+        }
+      },
+      "source_form": {
+        "title": "Edit input source",
+        "description": "Change the name, visibility, or button sequence.",
+        "data": {
+          "name": "Name",
+          "hidden": "Hide from source list",
+          "buttons": "Button sequence",
+          "interval": "Pause between buttons"
+        },
+        "data_description": {
+          "name": "Shown on media_player.select_source (for example HDMI 1).",
+          "hidden": "Keep the source configured but omit it from the TV source list.",
+          "buttons": "Press order, for example Source, Right, OK.",
+          "interval": "Seconds to wait after each press except the last."
+        }
+      },
+      "source_delete": {
+        "title": "Delete input source",
+        "description": "Remove a source from the list. This cannot be undone after Save.",
+        "data": {
+          "name": "Source"
+        }
+      },
+      "source_reorder": {
+        "title": "Reorder input sources",
+        "description": "Drag to change the order shown on the media player.",
+        "data": {
+          "source_order": "Order"
+        }
       }
     },
     "error": {
+      "buttons_required": "Select at least one button entity.",
       "command_required": "Select or enter the IR command name.",
       "device_required": "This remote requires a device name.",
-      "remote_required": "Select an IR remote."
+      "name_in_use": "That source name is already used.",
+      "name_required": "Enter a source name.",
+      "remote_required": "Select an IR remote.",
+      "unknown_source": "That source is not in the list."
     }
   }
 }
