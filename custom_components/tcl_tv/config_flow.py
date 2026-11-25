@@ -56,11 +56,21 @@ from .ir_flow import (
     tcl_key_choice_selector,
 )
 from .protocol import TclTvClient, TclTvError, async_probe
+
+
+class _SchemaWithBack(vol.Schema):
+    """Accept ``{go_back: True}`` from the footer Back button without other fields."""
+
+    def __call__(self, data: Any) -> Any:
+        if isinstance(data, dict) and data.get(ATTR_GO_BACK):
+            return {ATTR_GO_BACK: True}
+        return super().__call__(data)
 from .sources import (
     ATTR_ACTIONS,
     ATTR_ADD_MORE,
     ATTR_BUTTONS,
     ATTR_EDIT_SEQUENCE,
+    ATTR_GO_BACK,
     ATTR_HIDDEN,
     ATTR_INTERVAL,
     ATTR_NAME,
@@ -169,6 +179,38 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             CONF_SOURCES: copy_sources(options.get(CONF_SOURCES)),
         }
         self._draft_ready = True
+
+    def _with_back(self, schema: vol.Schema | dict[Any, Any]) -> vol.Schema:
+        mapping = schema.schema if isinstance(schema, vol.Schema) else schema
+        return _SchemaWithBack(mapping)
+
+    def _wants_back(self, user_input: dict[str, Any] | None) -> bool:
+        return bool(user_input and user_input.get(ATTR_GO_BACK))
+
+    def _persist(self) -> ConfigFlowResult:
+        self._ensure_draft()
+        return self.async_create_entry(data=saved_options(self._data))
+
+    def _show_form(
+        self,
+        step_id: str,
+        schema: vol.Schema | dict[Any, Any],
+        *,
+        errors: dict[str, str] | None = None,
+        last_step: bool | None = None,
+        placeholders: dict[str, str] | None = None,
+    ) -> ConfigFlowResult:
+        kwargs: dict[str, Any] = {
+            "step_id": step_id,
+            "data_schema": self._with_back(schema),
+        }
+        if errors:
+            kwargs["errors"] = errors
+        if last_step is not None:
+            kwargs["last_step"] = last_step
+        if placeholders is not None:
+            kwargs["description_placeholders"] = placeholders
+        return self.async_show_form(**kwargs)
 
     def _menu_placeholders(self) -> dict[str, str]:
         remote = self._data.get(CONF_POWER_ON_REMOTE)
@@ -295,7 +337,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             }
         )
 
-    async def _finish_source(self) -> ConfigFlowResult:
+    async def _finish_source(self, *, persist: bool) -> ConfigFlowResult:
         meta = self._source_meta
         if not meta or not self._seq_actions:
             return await self.async_step_source_seq_kind()
@@ -311,6 +353,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._data[CONF_SOURCES][self._edit_index] = preview
         self._edit_index = None
         self._reset_source_seq()
+        if persist:
+            return self._persist()
         return await self.async_step_sources()
 
     async def async_step_init(
@@ -329,8 +373,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
     async def async_step_save(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        self._ensure_draft()
-        return self.async_create_entry(data=saved_options(self._data))
+        return self._persist()
 
     async def async_step_power_on(
         self, user_input: dict[str, Any] | None = None
@@ -341,6 +384,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         current_s = current if isinstance(current, str) else None
 
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_init()
             remote = user_input.get(CONF_POWER_ON_REMOTE)
             remote_s = remote.strip() if isinstance(remote, str) else ""
             if not remote_s:
@@ -351,12 +396,11 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._pending_remote = remote_s
             return await self.async_step_ir_details()
 
-        return self.async_show_form(
-            step_id="power_on",
-            data_schema=vol.Schema(
-                remote_step_schema(self.hass, current_remote=current_s)
-            ),
+        return self._show_form(
+            "power_on",
+            remote_step_schema(self.hass, current_remote=current_s),
             errors=errors,
+            last_step=False,
         )
 
     async def async_step_ir_details(
@@ -380,6 +424,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
 
         errors: dict[str, str] = {}
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_power_on()
             device = user_input.get(CONF_POWER_ON_DEVICE)
             command = user_input.get(CONF_POWER_ON_COMMAND)
             device_s = device.strip() if isinstance(device, str) else ""
@@ -401,11 +447,12 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             current_device=current_device,
             current_command=current_command,
         )
-        return self.async_show_form(
-            step_id="ir_details",
-            data_schema=vol.Schema(schema),
+        return self._show_form(
+            "ir_details",
+            schema,
             errors=errors,
-            description_placeholders={
+            last_step=False,
+            placeholders={
                 "remote_entity": remote,
                 "codes_file": ir_codes_filename(self.hass, remote),
             },
@@ -422,7 +469,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             menu.extend(["source_edit", "source_delete"])
             if len(self._data[CONF_SOURCES]) > 1:
                 menu.append("source_reorder")
-        menu.append("sources_done")
+        # save / sources_done are footer actions; the frontend script hides the rows.
+        menu.extend(["save", "sources_done"])
         return self.async_show_menu(
             step_id="sources",
             menu_options=menu,
@@ -440,11 +488,14 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         self._ensure_draft()
         self._edit_index = None
         if user_input is None:
-            self._reset_source_seq()
-            return self.async_show_form(
-                step_id="source_add",
-                data_schema=self._source_meta_schema(None, editing=False),
-            )
+            if self._source_meta is None:
+                self._reset_source_seq()
+                schema = self._source_meta_schema(None, editing=False)
+            else:
+                schema = self._source_meta_schema(self._source_meta, editing=False)
+            return self._show_form("source_add", schema, last_step=False)
+        if self._wants_back(user_input):
+            return await self.async_step_sources()
         preview = {
             ATTR_NAME: normalize_name(user_input.get(ATTR_NAME)),
             ATTR_HIDDEN: bool(user_input.get(ATTR_HIDDEN)),
@@ -452,10 +503,11 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         }
         errors = self._source_meta_errors(user_input)
         if errors:
-            return self.async_show_form(
-                step_id="source_add",
-                data_schema=self._source_meta_schema(preview, editing=False),
+            return self._show_form(
+                "source_add",
+                self._source_meta_schema(preview, editing=False),
                 errors=errors,
+                last_step=False,
             )
         self._store_source_meta(user_input)
         self._seq_actions = []
@@ -470,18 +522,21 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         if not sources:
             return await self.async_step_sources()
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_sources()
             index = find_source_index(sources, user_input.get(CONF_SOURCE_NAME, ""))
             if index is None:
-                return self.async_show_form(
-                    step_id="source_edit",
-                    data_schema=self._source_pick_schema(),
+                return self._show_form(
+                    "source_edit",
+                    self._source_pick_schema(),
                     errors={"base": "unknown_source"},
+                    last_step=False,
                 )
             self._edit_index = index
+            self._source_meta = None
             return await self.async_step_source_form()
-        return self.async_show_form(
-            step_id="source_edit",
-            data_schema=self._source_pick_schema(),
+        return self._show_form(
+            "source_edit", self._source_pick_schema(), last_step=False
         )
 
     async def async_step_source_form(
@@ -494,12 +549,19 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             return await self.async_step_source_edit()
         existing = sources[self._edit_index]
         if user_input is None:
+            shown = dict(existing)
+            if self._source_meta:
+                shown.update(self._source_meta)
             self._source_original_buttons = list(existing[ATTR_BUTTONS])
-            return self.async_show_form(
-                step_id="source_form",
-                data_schema=self._source_meta_schema(existing, editing=True),
-                description_placeholders={"sequence": self._sequence_preview()},
+            return self._show_form(
+                "source_form",
+                self._source_meta_schema(shown, editing=True),
+                last_step=True,
+                placeholders={"sequence": self._sequence_preview()},
             )
+        if self._wants_back(user_input):
+            self._source_meta = None
+            return await self.async_step_source_edit()
         preview = {
             ATTR_NAME: normalize_name(user_input.get(ATTR_NAME)),
             ATTR_HIDDEN: bool(user_input.get(ATTR_HIDDEN)),
@@ -508,17 +570,18 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         }
         errors = self._source_meta_errors(user_input)
         if errors:
-            return self.async_show_form(
-                step_id="source_form",
-                data_schema=self._source_meta_schema(preview, editing=True),
+            return self._show_form(
+                "source_form",
+                self._source_meta_schema(preview, editing=True),
                 errors=errors,
-                description_placeholders={"sequence": self._sequence_preview()},
+                last_step=True,
+                placeholders={"sequence": self._sequence_preview()},
             )
         self._store_source_meta(user_input)
         self._source_original_buttons = list(existing[ATTR_BUTTONS])
         if not user_input.get(ATTR_EDIT_SEQUENCE):
             self._seq_actions = list(existing[ATTR_BUTTONS])
-            return await self._finish_source()
+            return await self._finish_source(persist=True)
         self._seq_actions = []
         return await self.async_step_source_seq_kind()
 
@@ -530,9 +593,20 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             return await self.async_step_sources()
         return self.async_show_menu(
             step_id="source_seq_kind",
-            menu_options=["source_seq_keys", "source_seq_buttons"],
+            menu_options=[
+                "source_seq_keys",
+                "source_seq_buttons",
+                "source_seq_kind_back",
+            ],
             description_placeholders={"sequence": self._sequence_preview()},
         )
+
+    async def async_step_source_seq_kind_back(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if self._edit_index is None:
+            return await self.async_step_source_add()
+        return await self.async_step_source_form()
 
     async def async_step_source_seq_keys(
         self, user_input: dict[str, Any] | None = None
@@ -554,6 +628,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             return await self.async_step_source_seq_kind()
         errors: dict[str, str] = {}
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_source_seq_kind()
             raw = user_input.get(ATTR_ACTIONS)
             unknown = unknown_source_actions(raw)
             picked = unique_actions_of_kind(raw, self._seq_kind)
@@ -570,13 +646,12 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             selector: Any = tcl_key_choice_selector(self.hass)
         else:
             selector = button_choice_selector(self.hass, current=defaults)
-        return self.async_show_form(
-            step_id="source_seq_pick",
-            data_schema=vol.Schema(
-                {vol.Required(ATTR_ACTIONS, default=defaults): selector}
-            ),
+        return self._show_form(
+            "source_seq_pick",
+            {vol.Required(ATTR_ACTIONS, default=defaults): selector},
             errors=errors,
-            description_placeholders={
+            last_step=False,
+            placeholders={
                 "kind": source_kind_label(self.hass, self._seq_kind),
                 "sequence": self._sequence_preview(),
             },
@@ -589,6 +664,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         if not self._seq_picked or not self._source_meta:
             return await self.async_step_source_seq_pick()
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_source_seq_pick()
             steps = [
                 (action, parse_repeat(user_input.get(f"repeat_{index}")))
                 for index, action in enumerate(self._seq_picked)
@@ -599,7 +676,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._seq_kind = None
             if user_input.get(ATTR_ADD_MORE):
                 return await self.async_step_source_seq_kind()
-            return await self._finish_source()
+            return await self._finish_source(persist=True)
         repeat_help = "\n".join(
             f"{index + 1}. {format_action_label(self.hass, action)}"
             for index, action in enumerate(self._seq_picked)
@@ -612,10 +689,11 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             placeholders[f"item_{index}"] = ""
         for index, action in enumerate(self._seq_picked):
             placeholders[f"item_{index}"] = format_action_label(self.hass, action)
-        return self.async_show_form(
-            step_id="source_seq_repeat",
-            data_schema=self._repeat_schema(),
-            description_placeholders=placeholders,
+        return self._show_form(
+            "source_seq_repeat",
+            self._repeat_schema(),
+            last_step=True,
+            placeholders=placeholders,
         )
 
     async def async_step_source_delete(
@@ -626,13 +704,14 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         if not sources:
             return await self.async_step_sources()
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_sources()
             index = find_source_index(sources, user_input.get(CONF_SOURCE_NAME, ""))
             if index is not None:
                 del self._data[CONF_SOURCES][index]
-            return await self.async_step_sources()
-        return self.async_show_form(
-            step_id="source_delete",
-            data_schema=self._source_pick_schema(),
+            return self._persist()
+        return self._show_form(
+            "source_delete", self._source_pick_schema(), last_step=True
         )
 
     async def async_step_source_reorder(
@@ -644,6 +723,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             return await self.async_step_sources()
         names = source_names(sources)
         if user_input is not None:
+            if self._wants_back(user_input):
+                return await self.async_step_sources()
             order = parse_button_ids(user_input.get(CONF_SOURCE_ORDER))
             by_name = {str(item[ATTR_NAME]): item for item in sources}
             rebuilt: list[dict[str, Any]] = []
@@ -657,14 +738,13 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 if name not in seen:
                     rebuilt.append(item)
             self._data[CONF_SOURCES] = rebuilt
-            return await self.async_step_sources()
-        return self.async_show_form(
-            step_id="source_reorder",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_SOURCE_ORDER, default=names
-                    ): ordered_choice_selector(names),
-                }
-            ),
+            return self._persist()
+        return self._show_form(
+            "source_reorder",
+            {
+                vol.Required(
+                    CONF_SOURCE_ORDER, default=names
+                ): ordered_choice_selector(names),
+            },
+            last_step=True,
         )

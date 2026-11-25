@@ -20,7 +20,7 @@
     "step": {
       "init": {
         "title": "TCL 电视选项",
-        "description": "红外开机：{power_on}\n输入源：{source_count} 个。点「保存」后才会写入。",
+        "description": "红外开机：{power_on}\n输入源：{source_count} 个。点右下角「保存」后才会写入。",
         "menu_options": {
           "power_on": "红外开机",
           "sources": "输入源",
@@ -51,18 +51,19 @@
       },
       "sources": {
         "title": "输入源",
-        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的本机按键和/或 button 实体（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}",
+        "description": "手动命名 HDMI/AV 输入，并配置切换时要依次按下的本机按键和/或按钮实体（例如：输入源 → 右 → 确认）。隐藏的输入源仍可在此编辑，但不会出现在电视的输入源列表。当前：{source_names}",
         "menu_options": {
           "source_add": "添加输入源",
           "source_edit": "修改输入源",
           "source_delete": "删除输入源",
           "source_reorder": "调整顺序",
+          "save": "保存",
           "sources_done": "返回"
         }
       },
       "source_add": {
         "title": "添加输入源",
-        "description": "先填写名称。下一步选择用本集成按键还是 button 实体，再勾选内容，并为每一项填写重复次数。",
+        "description": "先填写名称。下一步选择用本集成按键还是按钮实体，再勾选内容，并为每一项填写重复次数。",
         "data": {
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
@@ -94,15 +95,17 @@
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
           "interval": "每次按下后等待的秒数（最后一次除外）。",
-          "edit_sequence": "打开后将重新选择本集成按键或 button 实体，并为每一项填写重复次数。"
-        }
+          "edit_sequence": "打开后将重新选择本集成按键或按钮实体，并为每一项填写重复次数。"
+        },
+        "submit": "保存"
       },
       "source_seq_kind": {
         "title": "按键类型",
-        "description": "当前序列：{sequence}\n先选择使用本集成按键还是 Button 实体。选完一组后还可以再添加另一种。",
+        "description": "当前序列：{sequence}\n先选择使用本集成按键还是按钮实体。选完一组后还可以再添加另一种。",
         "menu_options": {
           "source_seq_keys": "本集成按键",
-          "source_seq_buttons": "Button 实体"
+          "source_seq_buttons": "按钮实体",
+          "source_seq_kind_back": "返回"
         }
       },
       "source_seq_pick": {
@@ -142,26 +145,29 @@
           "add_more": "继续添加另一组"
         },
         "data_description": {
-          "add_more": "打开后可以再选本集成按键或 Button 实体，接到当前序列后面。"
-        }
+          "add_more": "打开后可以再选本集成按键或按钮实体，接到当前序列后面。"
+        },
+        "submit": "保存"
       },
       "source_delete": {
         "title": "删除输入源",
-        "description": "从列表中移除一个输入源。点「保存」后无法撤销。",
+        "description": "从列表中移除一个输入源。点「保存」后立即写入，无法撤销。",
         "data": {
           "name": "输入源"
-        }
+        },
+        "submit": "保存"
       },
       "source_reorder": {
         "title": "调整输入源顺序",
         "description": "这里会列出全部输入源。拖动即可调整媒体播放器上的显示顺序。请保留列表中的每一项。",
         "data": {
           "source_order": "顺序"
-        }
+        },
+        "submit": "保存"
       }
     },
     "error": {
-      "buttons_required": "请至少选择一个本机按键或 button 实体。",
+      "buttons_required": "请至少选择一个本机按键或按钮实体。",
       "pick_required": "请至少选择一项当前类型的内容。",
       "unknown_action": "按键序列里有无法识别的键或按钮。",
       "command_required": "请选择或填写红外指令名。",
