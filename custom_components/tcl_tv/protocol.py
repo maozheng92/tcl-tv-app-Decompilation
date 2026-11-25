@@ -54,26 +54,11 @@ SILENCE_TIMEOUT = 20.0
 
 # Key codes sent as ``149>><code>``.
 #
-# TCLPlus ``TCLRemoteControlProxy`` only has named helpers for dirs / OK /
-# back / menu / home / power / vol / ch / mouse. China T-Cast firmware also
-# implements digits and ``source`` (aerial-tv MT9655 ``tcast-protocol.md``).
-#
-# MagiConnect ``TR_KEY_RED/GREEN/YELLOW/BLUE`` (34–37) and other SDK names
-# (3d, epg, display, playback, scale, picture, favorite, search, backspace,
-# info, enter, dot) are **not** mapped on China firmware: the TV ignores
-# ``149>>`` for those integers. TCLPlus never sends them. Do not advertise
-# them as working keys. Raw integers are still accepted for experiments.
+# TCLPlus ``TCLRemoteControlProxy`` named helpers. China firmware ignores
+# MagiConnect extras (digits, channel, mouse, color, info, …) even when the
+# APK has a method for some of them. Advertise only keys confirmed on the
+# China T-Cast set this integration targets. Raw integers remain available.
 KEYS: dict[str, int] = {
-    "1": 1,
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5,
-    "6": 6,
-    "7": 7,
-    "8": 8,
-    "9": 9,
-    "0": 10,
     "up": 11,
     "down": 12,
     "left": 13,
@@ -86,17 +71,27 @@ KEYS: dict[str, int] = {
     "volume_up": 21,
     "volume_down": 22,
     "mute": 23,
-    "channel_up": 27,
-    "channel_down": 28,
     "source": 29,
-    "mouse_left": 39,
-    "mouse_right": 40,
     "smart_tv": 45,
 }
 
 # MagiConnect TR_KEY_PLAYBACK. China firmware ignores 149>>26; media_player
 # still sends it for the play/pause buttons so the entity features remain.
 PLAYBACK_KEY = 26
+MUTE_KEY = 23
+
+
+def should_toggle_mute(
+    desired: bool, reported: bool | None, last: bool | None
+) -> bool:
+    """Whether to send TCLPlus muteAction (149>>23), a toggle.
+
+    MagiConnect ``131>>true/false`` is a setter. China firmware may honor
+    true and ignore false, so unmute must use the toggle key when the
+    reported/last state is not already the desired state.
+    """
+    current = reported if reported is not None else last
+    return current != desired
 
 RAW_KEY_MAX = 999
 
@@ -109,7 +104,7 @@ def resolve_key(name: str) -> int | None:
     """Map a ``remote.send_command`` name to a T-Cast 149 integer.
 
     Named keys come from ``KEYS``. Any other decimal string in 0..999 is
-    sent as a raw code (named keys such as ``0`` still mean digit zero).
+    sent as a raw ``149`` code for experiments.
     """
     if name in KEYS:
         return KEYS[name]

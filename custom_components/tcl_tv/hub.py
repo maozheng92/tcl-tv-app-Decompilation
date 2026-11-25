@@ -24,7 +24,15 @@ from .const import (
     RECONNECT_INTERVAL,
     VOLUME_POLL_INTERVAL,
 )
-from .protocol import TclTvClient, TclTvError, TvApp, TvInfo, async_wake
+from .protocol import (
+    MUTE_KEY,
+    TclTvClient,
+    TclTvError,
+    TvApp,
+    TvInfo,
+    async_wake,
+    should_toggle_mute,
+)
 from .sources import (
     ATTR_BUTTONS,
     ATTR_INTERVAL,
@@ -175,15 +183,18 @@ class TclTvHub:
         self._notify()
 
     async def async_set_mute(self, mute: bool) -> None:
+        """Mute/unmute using TCLPlus toggle key 23, not MagiConnect 131.
+
+        ``131>>true`` can mute on China firmware while ``131>>false`` is a
+        no-op, so a setter-only path can mute and never unmute.
+        """
         client = self.require_client()
-        try:
-            await client.set_mute(mute)
-        except TclTvError:
-            if self.muted is None or self.muted != mute:
-                await client.send_key(23)
-        await asyncio.sleep(0.3)
+        reported = await client.get_mute()
+        if should_toggle_mute(mute, reported, self.muted):
+            await client.send_key(MUTE_KEY)
+            await asyncio.sleep(0.3)
         await self.async_refresh_volume()
-        if self.muted is None:
+        if self.muted != mute:
             self.muted = mute
             self._notify()
 

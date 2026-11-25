@@ -9,7 +9,7 @@
 | 实体 | 能力 |
 |---|---|
 | `media_player.<电视>` | 开/关（开=可选红外遥控或 WOL，关=电源切换键）、音量读/写/加减、静音、播放/暂停键、`select_source` 切换**自定义输入源**、媒体浏览器 / `play_media` **启动已安装应用** |
-| `remote.<电视>` | `remote.send_command` 发送 TCL+ 遥控实际会发的键：方向、OK、返回、主页、菜单、数字、音量、频道、信号源等 |
+| `remote.<电视>` | `remote.send_command` 发送国行实测有效的键：方向、OK、返回、主页、菜单、音量、电源等 |
 
 开机键：在集成条目的 **配置 / Configure** 里选择红外 `remote.*`（Broadlink / Harmony Hub / 小米万能遥控），再从该遥控已学习的码库中**下拉选择**设备与开机指令（实现参考 [ir_television](https://github.com/maozheng92/ir_television)）。设置后，`turn_on` 会调用 `remote.send_command`；遥控留空则仍发 Wake-on-LAN。
 
@@ -74,18 +74,19 @@ data:
   command: back
 ```
 
-`remote.send_command` 只列出**国行 T-Cast 会响应**的键。TCL+ 的 `TCLRemoteControlProxy` 只发出下面这些 `149` 整数；MagiConnect 海外表里的彩键 / info / search 等（34–37、24–26、30–33、38、41、68、75）在国行固件上会被忽略（实机确认）。
+`remote.send_command` 只列出**国行实测会响应**的键。APK 里即使有 `channelUpKeyAction` / 数字码，国行固件也可以忽略对应的 `149` 整数。
 
-| 键名 | 码 | 来源 |
-|---|---:|---|
-| `0`–`9` | 10, 1–9 | 数字 0 是码 10；国行固件实现，TCL+ UI 不画数字键 |
-| `up` `down` `left` `right` `ok` `back` | 11–16 | TCL+ 具名方法 |
-| `menu` `home` `power` | 18–20 | 主页在 Linux TV 能力位下也可能是 `smart_tv`（45） |
-| `volume_up` `volume_down` `mute` | 21–23 | TCL+ 具名方法 |
-| `channel_up` `channel_down` `source` | 27–29 | 频道为具名方法；`source` 为国行固件实现 |
-| `mouse_left` `mouse_right` | 39–40 | TCL+ 具名方法 |
+| 键名 | 码 |
+|---|---:|
+| `up` `down` `left` `right` `ok` `back` | 11–16 |
+| `menu` `home` `power` | 18–20 |
+| `volume_up` `volume_down` `mute` | 21–23 |
+| `source` | 29 |
+| `smart_tv` | 45（Linux TV 上 TCL+ 用来当主页） |
 
-彩键、直播键走红外或电视上的直播应用，T-Cast 没有对应整数。需要试未收录的码时，可直接发 `149` 整数（0–999），例如 `command: "183"`（Android `KEYCODE_PROG_RED`，**未验证**）。
+数字、频道、鼠标、彩键、info/search 等在国行上无效。需要试未收录的码时，可直接发 `149` 整数（0–999）。
+
+`media_player` 静音/取消静音走 TCL+ 的静音**切换键** `149>>23`。MagiConnect 的 `131>>true/false` 在国行上可能只能静音、不能取消。
 
 **直播不是 T-Cast 按键。** TCLPlus 5.1.2.1 的 H5 `remotekey=0`（`REMOTE_KEY_GOTVAPP`）会在手机上打开 MagiConnect（`com.tnscreen.main`），不会向电视发 `149`。要进直播，用媒体浏览器 / `play_media` 打开电视上的直播应用：
 
