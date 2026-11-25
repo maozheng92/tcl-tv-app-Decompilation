@@ -72,7 +72,7 @@
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
+          "buttons": "Each TV key is listed once (source, right, ok, …), plus button entities. To press the same key again, type its name in the search box (right or 右).",
           "interval": "Seconds to wait after each press except the last."
         }
       },
@@ -95,7 +95,7 @@
         "data_description": {
           "name": "Shown on media_player.select_source (for example HDMI 1).",
           "hidden": "Keep the source configured but omit it from the TV source list.",
-          "buttons": "Order of this TV's keys (source, right, ok, …) and/or button entities. The same key can be added more than once.",
+          "buttons": "Each TV key is listed once (source, right, ok, …), plus button entities. To press the same key again, type its name in the search box (right or 右).",
           "interval": "Seconds to wait after each press except the last."
         }
       },

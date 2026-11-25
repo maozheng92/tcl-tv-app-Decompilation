@@ -17,8 +17,9 @@ ATTR_INTERVAL = "interval"
 DEFAULT_INTERVAL = 0.4
 MAX_INTERVAL = 10.0
 
-# Select selectors cannot repeat the same value, so each T-Cast key is
-# offered as several unique tokens that all decode back to the key name.
+# Select selectors cannot repeat the same value. The picker lists each key
+# once (``key:<name>``). Already-chosen repeats are stored as ``key:<name>:<n>``
+# so chips stay unique. Type the key name again to add another press.
 SOURCE_KEY_SLOT_MAX = 8
 _SOURCE_KEY_PREFIX = "key:"
 
@@ -41,6 +42,23 @@ TCL_SOURCE_KEYS = frozenset(
         "smart_tv",
     }
 )
+
+TCL_SOURCE_KEY_ALIASES = {
+    "上": "up",
+    "下": "down",
+    "左": "left",
+    "右": "right",
+    "确认": "ok",
+    "返回": "back",
+    "菜单": "menu",
+    "主页": "home",
+    "电源": "power",
+    "音量+": "volume_up",
+    "音量-": "volume_down",
+    "静音": "mute",
+    "输入源": "source",
+    "智能电视": "smart_tv",
+}
 
 
 def normalize_name(name: Any) -> str:
@@ -87,9 +105,11 @@ def classify_source_action(action: str) -> tuple[str, str] | None:
         return None
     if token.startswith(_SOURCE_KEY_PREFIX):
         name = token.split(":", 2)[1] if token.count(":") >= 1 else ""
+        name = TCL_SOURCE_KEY_ALIASES.get(name, name)
         if name in TCL_SOURCE_KEYS:
             return ("key", name)
         return None
+    token = TCL_SOURCE_KEY_ALIASES.get(token, token)
     if token in TCL_SOURCE_KEYS:
         return ("key", token)
     if token.startswith("button.") and token.count(".") == 1 and token.split(".", 1)[1]:
@@ -133,10 +153,15 @@ def encode_source_actions(actions: list[str]) -> list[str]:
     return out
 
 
+def source_key_add_token(name: str) -> str:
+    """Single picker value for a T-Cast key (one row in the add list)."""
+    return f"{_SOURCE_KEY_PREFIX}{name}"
+
+
 def source_key_tokens(name: str) -> list[str]:
     if name not in TCL_SOURCE_KEYS:
         return []
-    return [f"{_SOURCE_KEY_PREFIX}{name}:{slot}" for slot in range(1, SOURCE_KEY_SLOT_MAX + 1)]
+    return [source_key_add_token(name)]
 
 
 def parse_interval(raw: Any) -> float:

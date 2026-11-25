@@ -40,7 +40,7 @@ from .protocol import KEYS
 from .sources import (
     classify_source_action,
     encode_source_actions,
-    source_key_tokens,
+    source_key_add_token,
 )
 
 
@@ -296,10 +296,19 @@ def button_sequence_selector(
     seen: set[str] = set()
     for name in KEYS:
         label = _tcl_key_label(hass, name)
-        for token in source_key_tokens(name):
-            options.append({"value": token, "label": label})
-            seen.add(token)
+        token = source_key_add_token(name)
+        options.append({"value": token, "label": label})
+        seen.add(token)
     current_tokens = encode_source_actions(list(current or []))
+    for token in current_tokens:
+        if token in seen:
+            continue
+        classified = classify_source_action(token)
+        if classified and classified[0] == "key":
+            options.append(
+                {"value": token, "label": _tcl_key_label(hass, classified[1])}
+            )
+            seen.add(token)
     button_ids: list[str] = []
     for token in [*(current or []), *current_tokens]:
         classified = classify_source_action(token)

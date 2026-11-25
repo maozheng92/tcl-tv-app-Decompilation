@@ -113,6 +113,13 @@ class SourceParseTests(unittest.TestCase):
             ["source", "right", "right", "ok"],
         )
         self.assertEqual(
+            sources.parse_source_actions(["key:right", "右", "right"]),
+            ["right", "right", "right"],
+        )
+        self.assertEqual(sources.source_key_tokens("up"), ["key:up"])
+        self.assertEqual(sources.classify_source_action("右"), ("key", "right"))
+        self.assertEqual(sources.classify_source_action("key:source"), ("key", "source"))
+        self.assertEqual(
             sources.unknown_source_actions(["source", "nope", "remote.ir"]),
             ["nope", "remote.ir"],
         )

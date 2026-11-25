@@ -72,7 +72,7 @@
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
+          "buttons": "每个本机键只出现一次（source、right、ok 等），也可以选 button 实体。同一键要再按一次时，在搜索框输入键名（如 right 或 右）。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
         }
       },
@@ -95,7 +95,7 @@
         "data_description": {
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
-          "buttons": "按下顺序，可选本机键（source、right、ok 等）和/或 button 实体。同一按键可以添加多次。",
+          "buttons": "每个本机键只出现一次（source、right、ok 等），也可以选 button 实体。同一键要再按一次时，在搜索框输入键名（如 right 或 右）。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
         }
       },

@@ -1,7 +1,7 @@
 {
   "domain": "tcl_tv",
   "name": "TCL TV",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "codeowners": ["@maozheng92"],
   "config_flow": true,
   "documentation": "https://github.com/maozheng92/tcl-tv-app-Decompilation",
