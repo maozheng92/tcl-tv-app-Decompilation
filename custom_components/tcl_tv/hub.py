@@ -22,7 +22,7 @@ from .const import (
     RECONNECT_INTERVAL,
     VOLUME_POLL_INTERVAL,
 )
-from .protocol import TclTvClient, TclTvError, TvApp, TvInfo, async_wake
+from .protocol import TclTvClient, TclTvError, TvApp, TvInfo, TvInput, async_wake
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ class TclTvHub:
         self.volume: int | None = None
         self.muted: bool | None = None
         self.apps: list[TvApp] = []
+        self.inputs: list[TvInput] = []
+        self.selected_source: str | None = None
         self.probed = False
         self._stopping = False
         self._listeners: list[CALLBACK_TYPE] = []
@@ -125,6 +127,14 @@ class TclTvHub:
             _LOGGER.warning("TV %s did not list its apps: %s", self.host, err)
         else:
             self._notify()
+        try:
+            self.inputs = await client.get_recent_inputs()
+        except TclTvError as err:
+            _LOGGER.debug("TV %s did not list recent inputs: %s", self.host, err)
+            self.inputs = []
+        else:
+            if self.inputs:
+                self._notify()
         while client.connected:
             changed = False
             try:

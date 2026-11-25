@@ -24,6 +24,7 @@ from collections import deque
 from collections.abc import Callable
 import contextlib
 from dataclasses import dataclass
+import json
 import logging
 import struct
 import time
@@ -141,6 +142,19 @@ class TvApp:
     icon: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class TvInput:
+    """Recent HDMI / AV input from ``269>>1``.
+
+    ``token`` is the opaque selector the TV sent; ``269>>2>><token>`` switches
+    to it. Names are whatever the firmware put in the payload — not a complete
+    HDMI1/HDMI2 inventory.
+    """
+
+    name: str
+    token: str
+
+
 def decode_tclplus_aes_key(blob: str = _OBFUSCATED_AES_KEY_B64) -> bytes:
     """Undo TCLPlus key hiding: Base64 decode, then XOR every byte with 0xFF."""
     return bytes(byte ^ 0xFF for byte in base64.b64decode(blob))
@@ -224,6 +238,101 @@ def parse_apps(reply: str) -> list[TvApp]:
             )
         )
     return apps
+
+
+_INPUT_NAME_KEYS = (
+    "name",
+    "label",
+    "title",
+    "sourceName",
+    "inputName",
+    "displayName",
+    "source_name",
+)
+_INPUT_TOKEN_KEYS = (
+    "id",
+    "sourceId",
+    "inputId",
+    "key",
+    "value",
+    "source",
+    "token",
+    "selector",
+)
+
+
+def _json_str(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(value)
+    return None
+
+
+def _input_from_mapping(item: dict[str, object]) -> TvInput | None:
+    name = next(
+        (text for key in _INPUT_NAME_KEYS if (text := _json_str(item.get(key)))),
+        None,
+    )
+    token = next(
+        (text for key in _INPUT_TOKEN_KEYS if (text := _json_str(item.get(key)))),
+        None,
+    )
+    if name and not token:
+        token = name
+    if token and not name:
+        name = token
+    if not name or not token:
+        return None
+    return TvInput(name=name, token=token)
+
+
+def parse_recent_inputs(reply: str) -> list[TvInput]:
+    """Parse ``269>>…>>payload`` from ``TCLRemoteControlProxy.getRecentInputs``.
+
+    The phone SDK only forwards field index 2 (after splitting on ``>>``) to
+    ``GetRecentInputCallback.recentInputs(String)``. This APK never decodes
+    HDMI port numbers; if the payload is JSON we pick name/token pairs.
+    """
+    fields = reply.split(_SEP)
+    if fields and fields[0] == "269":
+        payload = _SEP.join(fields[2:]) if len(fields) > 2 else ""
+    else:
+        payload = reply
+    payload = payload.strip()
+    if not payload:
+        return []
+    try:
+        data: object = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+    rows: list[object]
+    if isinstance(data, dict):
+        for key in ("list", "inputs", "sources", "recentInputs", "data"):
+            nested = data.get(key)
+            if isinstance(nested, list):
+                rows = nested
+                break
+        else:
+            rows = [data]
+    elif isinstance(data, list):
+        rows = data
+    else:
+        return []
+    inputs: list[TvInput] = []
+    seen: set[str] = set()
+    for row in rows:
+        parsed: TvInput | None = None
+        if isinstance(row, str) and row.strip():
+            text = row.strip()
+            parsed = TvInput(name=text, token=text)
+        elif isinstance(row, dict):
+            parsed = _input_from_mapping(row)
+        if parsed is None or parsed.name in seen:
+            continue
+        seen.add(parsed.name)
+        inputs.append(parsed)
+    return inputs
 
 
 def parse_handshake(text: str) -> TvInfo:
@@ -425,6 +534,15 @@ class TclTvClient:
 
     async def launch_app(self, package: str) -> None:
         await self._send(f"223>>OPEN>>{package}")
+
+    async def get_recent_inputs(self) -> list[TvInput]:
+        """``269>>1`` as packed by ``TCLRemoteControlProxy.getRecentInputs``."""
+        reply = await self._request("269>>1", "269", timeout=8.0)
+        return parse_recent_inputs(reply)
+
+    async def switch_recent_input(self, token: str) -> None:
+        """``269>>2>><token>`` as packed by ``switchRecentInput(String)``."""
+        await self._send(f"269>>2>>{token}")
 
     def _write(self, text: str, plain: bool = False) -> None:
         if self._writer is None or self._closed:

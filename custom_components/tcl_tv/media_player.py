@@ -63,8 +63,19 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
         return self.hub.muted
 
     @property
+    def source(self) -> str | None:
+        return self.hub.selected_source
+
+    @property
     def source_list(self) -> list[str]:
-        return [app.name for app in self.hub.apps]
+        names: list[str] = []
+        seen: set[str] = set()
+        for item in (*self.hub.inputs, *self.hub.apps):
+            if item.name in seen:
+                continue
+            seen.add(item.name)
+            names.append(item.name)
+        return names
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -74,6 +85,10 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             attrs["tcl_model"] = info.model
             attrs["tcl_app_version"] = info.app_version
             attrs["tcl_software_version"] = info.software_version
+        if self.hub.inputs:
+            attrs["tcl_inputs"] = [
+                {"name": src.name, "token": src.token} for src in self.hub.inputs
+            ]
         if self.hub.apps:
             attrs["tcl_apps"] = [
                 {"name": app.name, "package": app.package} for app in self.hub.apps
@@ -126,12 +141,21 @@ class TclTvMediaPlayer(TclTvEntity, MediaPlayerEntity):
             await self.hub.require_client().send_key(KEYS[key])
 
     async def async_select_source(self, source: str) -> None:
+        token = next(
+            (item.token for item in self.hub.inputs if item.name == source), None
+        )
+        if token is not None:
+            with tv_errors():
+                await self.hub.require_client().switch_recent_input(token)
+            self.hub.selected_source = source
+            return
         package = next(
             (app.package for app in self.hub.apps if app.name == source), None
         )
         if package is None:
             raise ServiceValidationError(
-                f"Unknown app {source!r}; choose one of: {', '.join(self.source_list)}"
+                f"Unknown source {source!r}; choose one of: {', '.join(self.source_list)}"
             )
         with tv_errors():
             await self.hub.require_client().launch_app(package)
+        self.hub.selected_source = source

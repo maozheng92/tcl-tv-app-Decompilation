@@ -68,6 +68,22 @@ def test_parse_apps_splits_records_and_system_flag() -> None:
     assert apps[1].system is True
 
 
+def test_parse_recent_inputs_json_list_and_objects() -> None:
+    listed = proto.parse_recent_inputs(
+        '269>>1>>[{"name":"HDMI 1","id":"hdmi_1"},{"label":"AV","sourceId":"av1"}]'
+    )
+    assert [(item.name, item.token) for item in listed] == [
+        ("HDMI 1", "hdmi_1"),
+        ("AV", "av1"),
+    ]
+    wrapped = proto.parse_recent_inputs(
+        '269>>ok>>{"list":["HDMI2", {"name":"TV","token":"dtv"}]}'
+    )
+    assert [item.name for item in wrapped] == ["HDMI2", "TV"]
+    assert proto.parse_recent_inputs("269>>1") == []
+    assert proto.parse_recent_inputs("269>>1>>not-json") == []
+
+
 def test_parse_handshake_algorithm_and_mac() -> None:
     text = (
         "159>>75Q9M Pro>>600505013:5.1.2.1>>V8-LF1>>1>>AA:BB:CC:DD:EE:FF>>1"
@@ -111,6 +127,7 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
 async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     volume = 25
     apps = "223>>GET>>com.example.player::Player::icon"
+    inputs = '269>>1>>[{"name":"HDMI 1","id":"hdmi_1"}]'
     while True:
         try:
             header = await reader.readexactly(4)
@@ -133,6 +150,8 @@ async def _fake_tv(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -
             reply = proto.encode_frame("131>>false", encrypted=True)
         elif text.startswith("223>>GET"):
             reply = proto.encode_frame(apps, encrypted=True)
+        elif text.startswith("269>>1"):
+            reply = proto.encode_frame(inputs, encrypted=True)
         elif text.startswith("150"):
             reply = proto.encode_frame("150>>YES", encrypted=True)
         else:
@@ -162,6 +181,9 @@ async def test_client_handshake_volume_and_apps() -> None:
         assert await client.get_mute() is False
         apps = await client.get_apps()
         assert apps[0].package == "com.example.player"
+        recent = await client.get_recent_inputs()
+        assert recent[0].name == "HDMI 1"
+        assert recent[0].token == "hdmi_1"
         await client.send_key(20)
     finally:
         await client.close()

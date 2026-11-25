@@ -95,9 +95,13 @@ TCLPlus 遥控代理发出的按键都是 `149>><code>`（`a.a.D`，常量 `NEED
 | C→T | `140>>` / `131>><true/false>` | 同上 | 静音读/写；失败则回退到按键 23 |
 | C→T | `223>>GET` | `AppManagerProxy.getAppData` / `a.a.C0099a`（ID 223） | 应用列表 |
 | C→T | `223>>OPEN>><package>` | `AppManagerProxy.openApp` | 启动应用 |
+| C→T | `269>>1` | `TCLRemoteControlProxy.getRecentInputs` / `a.a.B` | 最近输入查询 |
+| C→T | `269>>2>><token>` | `TCLRemoteControlProxy.switchRecentInput` | 用电视返回的 token 切换输入 |
 | both | `159>>...` | `a.a.n` / `ProtocolHandlerV6` | 握手 |
 
 应用列表记录：`package::name::icon[::versionCode::versionName::cache::data::code[::systemFlag]]`，应用之间用单个 `>` 分隔；`systemFlag=0` 为系统应用。
+
+最近输入：查询 `269>>1`，回复拆 `>>` 后字段 2 原样交给 `GetRecentInputCallback.recentInputs(String)`。TCLPlus 5.1.2.1 **没有** HDMI1/HDMI2 数字映射，本 APK 的 Java 层也从未调用 `getRecentInputs`。载荷若是 JSON 数组/`list`，集成才把它填进 `source_list`；切换只用电视给的 token，不猜测 `HDMI1`。完整信源清单仍在电视 UI（键码 29）。
 
 ## 按键（TCLPlus 具名方法）
 
