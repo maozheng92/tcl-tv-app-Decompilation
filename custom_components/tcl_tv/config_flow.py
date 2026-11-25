@@ -337,7 +337,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             }
         )
 
-    async def _finish_source(self, *, persist: bool) -> ConfigFlowResult:
+    async def _finish_source(self) -> ConfigFlowResult:
         meta = self._source_meta
         if not meta or not self._seq_actions:
             return await self.async_step_source_seq_kind()
@@ -353,8 +353,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._data[CONF_SOURCES][self._edit_index] = preview
         self._edit_index = None
         self._reset_source_seq()
-        if persist:
-            return self._persist()
         return await self.async_step_sources()
 
     async def async_step_init(
@@ -556,7 +554,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             return self._show_form(
                 "source_form",
                 self._source_meta_schema(shown, editing=True),
-                last_step=True,
                 placeholders={"sequence": self._sequence_preview()},
             )
         if self._wants_back(user_input):
@@ -574,14 +571,13 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 "source_form",
                 self._source_meta_schema(preview, editing=True),
                 errors=errors,
-                last_step=True,
                 placeholders={"sequence": self._sequence_preview()},
             )
         self._store_source_meta(user_input)
         self._source_original_buttons = list(existing[ATTR_BUTTONS])
         if not user_input.get(ATTR_EDIT_SEQUENCE):
             self._seq_actions = list(existing[ATTR_BUTTONS])
-            return await self._finish_source(persist=True)
+            return await self._finish_source()
         self._seq_actions = []
         return await self.async_step_source_seq_kind()
 
@@ -676,7 +672,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             self._seq_kind = None
             if user_input.get(ATTR_ADD_MORE):
                 return await self.async_step_source_seq_kind()
-            return await self._finish_source(persist=True)
+            return await self._finish_source()
         repeat_help = "\n".join(
             f"{index + 1}. {format_action_label(self.hass, action)}"
             for index, action in enumerate(self._seq_picked)
@@ -692,7 +688,6 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         return self._show_form(
             "source_seq_repeat",
             self._repeat_schema(),
-            last_step=True,
             placeholders=placeholders,
         )
 
@@ -709,10 +704,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             index = find_source_index(sources, user_input.get(CONF_SOURCE_NAME, ""))
             if index is not None:
                 del self._data[CONF_SOURCES][index]
-            return self._persist()
-        return self._show_form(
-            "source_delete", self._source_pick_schema(), last_step=True
-        )
+            return await self.async_step_sources()
+        return self._show_form("source_delete", self._source_pick_schema())
 
     async def async_step_source_reorder(
         self, user_input: dict[str, Any] | None = None
@@ -738,7 +731,7 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                 if name not in seen:
                     rebuilt.append(item)
             self._data[CONF_SOURCES] = rebuilt
-            return self._persist()
+            return await self.async_step_sources()
         return self._show_form(
             "source_reorder",
             {
@@ -746,5 +739,4 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
                     CONF_SOURCE_ORDER, default=names
                 ): ordered_choice_selector(names),
             },
-            last_step=True,
         )

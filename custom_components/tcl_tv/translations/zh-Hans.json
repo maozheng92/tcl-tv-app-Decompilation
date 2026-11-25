@@ -96,8 +96,7 @@
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
           "interval": "每次按下后等待的秒数（最后一次除外）。",
           "edit_sequence": "打开后将重新选择本集成按键或按钮实体，并为每一项填写重复次数。"
-        },
-        "submit": "保存"
+        }
       },
       "source_seq_kind": {
         "title": "按键类型",
@@ -146,24 +145,21 @@
         },
         "data_description": {
           "add_more": "打开后可以再选本集成按键或按钮实体，接到当前序列后面。"
-        },
-        "submit": "保存"
+        }
       },
       "source_delete": {
         "title": "删除输入源",
-        "description": "从列表中移除一个输入源。点「保存」后立即写入，无法撤销。",
+        "description": "从列表中移除一个输入源。点输入源页或选项首页的「保存」后才会写入，之后无法撤销。",
         "data": {
           "name": "输入源"
-        },
-        "submit": "保存"
+        }
       },
       "source_reorder": {
         "title": "调整输入源顺序",
         "description": "这里会列出全部输入源。拖动即可调整媒体播放器上的显示顺序。请保留列表中的每一项。",
         "data": {
           "source_order": "顺序"
-        },
-        "submit": "保存"
+        }
       }
     },
     "error": {

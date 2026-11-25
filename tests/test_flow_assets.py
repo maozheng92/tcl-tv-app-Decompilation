@@ -19,10 +19,13 @@ class FlowAssetTests(unittest.TestCase):
         kind = zh["options"]["step"]["source_seq_kind"]["menu_options"]
         self.assertEqual(kind["source_seq_buttons"], "按钮实体")
         self.assertEqual(kind["source_seq_kind_back"], "返回")
-        self.assertEqual(zh["options"]["step"]["source_form"]["submit"], "保存")
-        self.assertEqual(zh["options"]["step"]["source_seq_repeat"]["submit"], "保存")
-        self.assertEqual(zh["options"]["step"]["source_delete"]["submit"], "保存")
-        self.assertEqual(zh["options"]["step"]["source_reorder"]["submit"], "保存")
+        for step_id in (
+            "source_form",
+            "source_seq_repeat",
+            "source_delete",
+            "source_reorder",
+        ):
+            self.assertNotIn("submit", zh["options"]["step"][step_id])
 
     def test_footer_script_hides_duplicate_menu_rows(self) -> None:
         script = (_ROOT / "www" / "tcl_tv_flow.js").read_text(encoding="utf-8")
@@ -36,6 +39,6 @@ class FlowAssetTests(unittest.TestCase):
         for name in ("strings.json", "translations/en.json"):
             data = json.loads((_ROOT / name).read_text())
             step = data["options"]["step"]
-            self.assertEqual(step["source_form"]["submit"], "Save")
+            self.assertNotIn("submit", step["source_form"])
             self.assertEqual(step["sources"]["menu_options"]["save"], "Save")
             self.assertIn("source_seq_kind_back", step["source_seq_kind"]["menu_options"])
