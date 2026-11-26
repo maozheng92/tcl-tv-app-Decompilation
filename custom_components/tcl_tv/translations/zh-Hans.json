@@ -31,27 +31,25 @@
         "title": "红外开机遥控",
         "description": "选择红外遥控器（Broadlink、Harmony Hub 或小米万能遥控）。留空则继续使用 Wake-on-LAN。",
         "data": {
-          "go_back": "返回上一界面",
           "power_on_remote": "红外遥控"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "power_on_remote": "已学习红外码的 Home Assistant remote 实体。"
-        }
+        },
+        "submit": "提交"
       },
       "ir_details": {
         "title": "开机红外指令",
         "description": "从 {remote_entity} 已学习的码库中选择设备与指令（码文件：{codes_file}）。",
         "data": {
-          "go_back": "返回上一界面",
           "power_on_device": "设备",
           "power_on_command": "指令"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "power_on_device": "红外码库中的设备名。Harmony Hub 与小米万能遥控必填。",
           "power_on_command": "该设备下的指令名，例如 Power 或 power_on。"
-        }
+        },
+        "submit": "提交"
       },
       "sources": {
         "title": "输入源",
@@ -61,6 +59,7 @@
           "source_edit": "修改输入源",
           "source_delete": "删除输入源",
           "source_reorder": "调整顺序",
+          "save": "保存",
           "sources_done": "返回"
         }
       },
@@ -68,46 +67,41 @@
         "title": "添加输入源",
         "description": "先填写名称。下一步选择用本集成按键还是按钮实体，再勾选内容，并为每一项填写重复次数。",
         "data": {
-          "go_back": "返回上一界面",
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
           "interval": "按键间隔"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
           "interval": "每次按下后等待的秒数（最后一次除外）。"
-        }
+        },
+        "submit": "提交"
       },
       "source_edit": {
         "title": "修改输入源",
         "description": "选择要修改的输入源。",
         "data": {
-          "go_back": "返回上一界面",
           "name": "输入源"
         },
-        "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。"
-        }
+        "submit": "提交"
       },
       "source_form": {
         "title": "修改输入源",
         "description": "当前按键序列：{sequence}",
         "data": {
-          "go_back": "返回上一界面",
           "name": "名称",
           "hidden": "从输入源列表中隐藏",
           "interval": "按键间隔",
           "edit_sequence": "重新设置按键序列"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "name": "出现在 media_player.select_source 中，例如 HDMI 1。",
           "hidden": "仍保留配置，但不显示在电视输入源列表。",
           "interval": "每次按下后等待的秒数（最后一次除外）。",
           "edit_sequence": "打开后将重新选择本集成按键或按钮实体，并为每一项填写重复次数。"
-        }
+        },
+        "submit": "提交"
       },
       "source_seq_kind": {
         "title": "按键类型",
@@ -122,19 +116,17 @@
         "title": "选择按键",
         "description": "当前类型：{kind}。已有序列：{sequence}\n按发送顺序勾选。下一步会为每一项填写重复次数。",
         "data": {
-          "go_back": "返回上一界面",
           "actions": "可选内容"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "actions": "可拖动排序。列表里每项只出现一次，重复次数在下一页填写。"
-        }
+        },
+        "submit": "提交"
       },
       "source_seq_repeat": {
         "title": "重复次数",
         "description": "已有序列：{sequence}\n{repeat_help}",
         "data": {
-          "go_back": "返回上一界面",
           "repeat_0": "{item_0}",
           "repeat_1": "{item_1}",
           "repeat_2": "{item_2}",
@@ -158,31 +150,25 @@
           "add_more": "继续添加另一组"
         },
         "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。",
           "add_more": "打开后可以再选本集成按键或按钮实体，接到当前序列后面。"
-        }
+        },
+        "submit": "提交"
       },
       "source_delete": {
         "title": "删除输入源",
         "description": "从列表中移除一个输入源。点「保存」后无法撤销。",
         "data": {
-          "go_back": "返回上一界面",
           "name": "输入源"
         },
-        "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。"
-        }
+        "submit": "提交"
       },
       "source_reorder": {
         "title": "调整输入源顺序",
         "description": "这里会列出全部输入源。拖动即可调整媒体播放器上的显示顺序。请保留列表中的每一项。",
         "data": {
-          "go_back": "返回上一界面",
           "source_order": "顺序"
         },
-        "data_description": {
-          "go_back": "打开后点提交，回到上一页，本页改动不会写入草稿。"
-        }
+        "submit": "提交"
       }
     },
     "error": {

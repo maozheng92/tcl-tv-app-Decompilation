@@ -9,10 +9,27 @@ from .hub import TclTvHub
 
 type TclTvConfigEntry = ConfigEntry[TclTvHub]
 
-__all__ = ["DOMAIN", "TclTvConfigEntry", "async_setup_entry", "async_unload_entry"]
+__all__ = [
+    "DOMAIN",
+    "TclTvConfigEntry",
+    "async_setup",
+    "async_setup_entry",
+    "async_unload_entry",
+]
+
+
+async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
+    """Register the options-dialog footer script."""
+    from .flow_ui import async_setup_flow_ui
+
+    await async_setup_flow_ui(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TclTvConfigEntry) -> bool:
+    from .flow_ui import async_setup_flow_ui
+
+    await async_setup_flow_ui(hass)
     hub = TclTvHub(hass, entry)
     entry.runtime_data = hub
     # A powered-off TV is a normal state, not a setup failure: entities report
