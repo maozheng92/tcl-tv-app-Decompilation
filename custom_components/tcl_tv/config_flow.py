@@ -89,11 +89,20 @@ from .sources import (
 )
 
 
+def _go_back_chosen(value: Any) -> bool:
+    """True when the footer Back button posted ``go_back``."""
+    if value in (True, ATTR_GO_BACK, "true", "1", 1):
+        return True
+    if isinstance(value, (list, tuple)):
+        return any(_go_back_chosen(item) for item in value)
+    return False
+
+
 class _SchemaWithBack(vol.Schema):
-    """Accept ``{go_back: True}`` so Back does not require other fields."""
+    """Accept ``{go_back: True}`` from the footer Back button without other fields."""
 
     def __call__(self, data: Any) -> Any:
-        if isinstance(data, dict) and data.get(ATTR_GO_BACK):
+        if isinstance(data, dict) and _go_back_chosen(data.get(ATTR_GO_BACK)):
             return {ATTR_GO_BACK: True}
         return super().__call__(data)
 
@@ -181,23 +190,13 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
         self._draft_ready = True
 
     def _wants_back(self, user_input: dict[str, Any] | None) -> bool:
-        return bool(user_input and user_input.get(ATTR_GO_BACK))
+        return bool(user_input) and _go_back_chosen(user_input.get(ATTR_GO_BACK))
 
     def _with_back(self, schema: vol.Schema | dict[Any, Any]) -> vol.Schema:
+        # No in-form Go-back control. frontend/tcl_tv_flow.js posts
+        # {go_back: True} from the dialog footer (返回 left, 提交 right).
         mapping = schema.schema if isinstance(schema, vol.Schema) else schema
-        fields: dict[Any, Any] = {
-            vol.Optional(ATTR_GO_BACK, default=False): BooleanSelector()
-        }
-        for key, typ in mapping.items():
-            if isinstance(key, vol.Required):
-                default = getattr(key, "_default", getattr(key, "default", vol.UNDEFINED))
-                if default is vol.UNDEFINED:
-                    fields[vol.Optional(key.schema)] = typ
-                else:
-                    fields[vol.Optional(key.schema, default=default)] = typ
-            else:
-                fields[key] = typ
-        return _SchemaWithBack(fields)
+        return _SchemaWithBack(mapping)
 
     def _show_form(
         self,
@@ -471,7 +470,8 @@ class TclTvOptionsFlow(OptionsFlowWithReload):
             menu.extend(["source_edit", "source_delete"])
             if len(self._data[CONF_SOURCES]) > 1:
                 menu.append("source_reorder")
-        menu.append("sources_done")
+        # save / sources_done are footer actions; the frontend script hides the rows.
+        menu.extend(["save", "sources_done"])
         return self.async_show_menu(
             step_id="sources",
             menu_options=menu,
