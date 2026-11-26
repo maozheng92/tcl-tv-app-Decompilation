@@ -142,6 +142,14 @@ def test_named_keys_match_tclplus_remote_proxy() -> None:
     assert "截图" in proto.SCREENSHOT_NAMES
 
 
+def test_readme_lists_every_remote_command() -> None:
+    readme = (_PROTOCOL.parents[2] / "README.md").read_text(encoding="utf-8")
+    for name in proto.REMOTE_COMMANDS:
+        assert f"`{name}`" in readme, name
+    assert "`截图`" in readme
+    assert "0" in readme and "999" in readme
+
+
 def test_screenshot_reply_and_url_rewrite() -> None:
     assert (
         proto.parse_screenshot_reply(
