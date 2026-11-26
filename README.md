@@ -9,7 +9,7 @@
 | 实体 | 能力 |
 |---|---|
 | `media_player.<电视>` | 开/关（开=可选红外遥控或 WOL，关=电源切换键）、音量读/写/加减、静音、播放/暂停键、`select_source` 切换**自定义输入源**、媒体浏览器 / `play_media` **启动已安装应用** |
-| `remote.<电视>` | `remote.send_command` 发送国行实测有效的键：方向、OK、返回、主页、菜单、音量、电源等；`screenshot` 截图并保存到 **媒体 → Image upload** |
+| `remote.<电视>` | `remote.send_command` 发送国行实测有效的键（完整命令表见下文）；`screenshot` 截图并保存到 **媒体 → Image upload** |
 
 开机键：在集成条目的 **配置 / Configure** 里选择红外 `remote.*`（Broadlink / Harmony Hub / 小米万能遥控），再从该遥控已学习的码库中**下拉选择**设备与开机指令（实现参考 [ir_television](https://github.com/maozheng92/ir_television)）。设置后，`turn_on` 会调用 `remote.send_command`；遥控留空则仍发 Wake-on-LAN。
 
@@ -35,7 +35,9 @@
 
 重启 Home Assistant。设置 → 设备与服务 → 添加集成 → **TCL TV** → 填写电视 IP。
 
-HACS 自定义仓库也可指向本仓库（类别选 Integration）。
+选项页脚脚本在 `frontend/`，启动时自动安装到 `config/www/tcl_tv/`（`/local/tcl_tv/`）。集成目录里**没有** `www/`。升级后请**硬刷新 HA 前端**（Ctrl+Shift+R）。
+
+HACS 自定义仓库也可指向本仓库（类别选 Integration）。正式版用 GitHub Release。
 
 ## 示例
 
@@ -66,6 +68,10 @@ data:
 
 `play_media` 的 `media_content_id` 可以是应用名称或 Android 包名。
 
+## `remote.send_command`
+
+国行实测有效的键通过本集成的 `remote` 实体发送（Universal Remote Card 可用；实体属性 `commands` 列出同一组名字）。`command` 可以是单个字符串，或按输入源宏那样的**按键列表**（每项一发，中间隔 `delay_secs`）：
+
 ```yaml
 action: remote.send_command
 target:
@@ -74,18 +80,40 @@ data:
   command: back
 ```
 
-`remote.send_command` 只列出**国行实测会响应**的键。APK 里即使有 `channelUpKeyAction` / 数字码，国行固件也可以忽略对应的 `149` 整数。
+```yaml
+action: remote.send_command
+target:
+  entity_id: remote.living_room
+data:
+  command:
+    - source
+    - right
+    - ok
+  delay_secs: 0.4
+  # 可选：num_repeats（整组重复次数）
+```
 
-| 键名 | 码 |
-|---|---:|
-| `up` `down` `left` `right` `ok` `back` | 11–16 |
-| `menu` `home` `power` | 18–20 |
-| `volume_up` `volume_down` `mute` | 21–23 |
-| `source` | 29 |
-| `smart_tv` | 45（Linux TV 上 TCL+ 用来当主页） |
-| `screenshot` | 不是 `149`。走 `225>>`，图片写入 **媒体 → Image upload** |
+只列出**国行实测会响应**的键。APK 里即使有 `channelUpKeyAction` / 数字码，国行固件也可以忽略对应的 `149` 整数。
 
-数字、频道、鼠标、彩键、info/search 等在国行上无效。需要试未收录的码时，可直接发 `149` 整数（0–999）。
+### 全部具名命令
+
+| 命令 | 码 | 作用 |
+|---|---:|---|
+| `up` | 11 | 上 |
+| `down` | 12 | 下 |
+| `left` | 13 | 左 |
+| `right` | 14 | 右 |
+| `ok` | 15 | 确认 |
+| `back` | 16 | 返回 |
+| `menu` | 18 | 菜单 |
+| `home` | 19 | 主页 |
+| `power` | 20 | 电源。这是**切换**，不是幂等开/关机 |
+| `volume_up` | 21 | 音量 + |
+| `volume_down` | 22 | 音量 − |
+| `mute` | 23 | 静音**切换**。`media_player` 静音/取消静音也走这键（`149>>23`）。MagiConnect 的 `131>>true/false` 在国行上可能只能静音、不能取消 |
+| `source` | 29 | 打开电视上的输入源菜单。这不是 `media_player.select_source` |
+| `smart_tv` | 45 | 智能电视。Linux TV 上 TCL+ 用来当主页 |
+| `screenshot` | — | 截当前画面。别名 `截图`。发 `225>>`，从电视 HTTP（常见端口 6554）拉图，写入 **媒体 → Image upload**。文件名是「电视名 + 时间」。视频层可能截成黑屏，OSD 仍可见。不是 `149` 键 |
 
 ```yaml
 action: remote.send_command
@@ -95,11 +123,19 @@ data:
   command: screenshot
 ```
 
-`screenshot`（也接受 `截图`）与其它遥控键一样用 `remote.send_command`。TCL+ 发 `225>>`，从电视 HTTP（常见端口 6554）拉图，再保存到 Home Assistant **媒体 → Image upload**。文件名是「电视名 + 时间」。视频层可能截成黑屏，OSD 仍可见。
+### 其它写法
 
-`media_player` 静音/取消静音走 TCL+ 的静音**切换键** `149>>23`。MagiConnect 的 `131>>true/false` 在国行上可能只能静音、不能取消。
+| 写法 | 作用 |
+|---|---|
+| `0`–`999` 的十进制字符串 | 未收录的码按原始 `149` 整数发送，供试验 |
+| `截图` | `screenshot` 的别名 |
+| `live` `tv` `live_tv` `直播` | **不是**按键，调用会报错。TCLPlus H5 `remotekey=0` 只在手机上打开 MagiConnect，不会向电视发 `149` |
 
-**直播不是 T-Cast 按键。** TCLPlus 5.1.2.1 的 H5 `remotekey=0`（`REMOTE_KEY_GOTVAPP`）会在手机上打开 MagiConnect（`com.tnscreen.main`），不会向电视发 `149`。要进直播，用媒体浏览器 / `play_media` 打开电视上的直播应用：
+自定义输入源**名称**（例如 `HDMI 1`）**不是** `remote.send_command` 的命令。名称只给 `media_player.select_source`：集成按选项里保存的序列发键（可混用本集成按键和 HA `button.*`）。
+
+数字、频道、鼠标、彩键、info/search 等在国行上无效，因此没有具名命令。
+
+进直播用媒体浏览器 / `play_media` 打开电视上的直播应用：
 
 ```yaml
 action: media_player.play_media
@@ -110,7 +146,7 @@ data:
   media_content_id: 直播
 ```
 
-`media_content_id` 填应用名称或包名（与电视 `223>>GET` 列表匹配）。完整键表见 `protocol.REMOTE_COMMANDS`。
+`media_content_id` 填应用名称或包名（与电视 `223>>GET` 列表匹配）。
 
 ## 开发
 

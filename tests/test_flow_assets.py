@@ -126,7 +126,7 @@ class FlowAssetTests(unittest.TestCase):
 
     def test_version_and_no_legacy_www(self) -> None:
         manifest = _load("manifest.json")
-        self.assertEqual(manifest["version"], "0.1.18")
+        self.assertEqual(manifest["version"], "1.0.0")
         self.assertFalse((_ROOT / "www").exists())
 
     def test_sources_menu_save_is_footer_not_row(self) -> None:
